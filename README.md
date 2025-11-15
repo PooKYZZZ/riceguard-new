@@ -25,53 +25,189 @@ riceguard/
 |- ml/        # Shared ML artifacts and preprocessing helpers
 ```
 
-## Quickstart
+## 🚀 Quick Start (One-Command Setup)
+
+### **Automated Setup (Recommended)**
+
+The easiest way to get RiceGuard running on any platform:
+
+**Windows:**
+```bash
+setup.bat
+```
+
+**macOS/Linux:**
+```bash
+chmod +x setup.sh
+./setup.sh
+```
+
+**Python (Cross-platform):**
+```bash
+python setup.py
+```
+
+This automated setup handles:
+- ✅ System requirements check
+- ✅ Virtual environment creation
+- ✅ Dependency installation
+- ✅ Environment file templates
+- ✅ Directory structure setup
+- ✅ Development tools creation
+
+**After setup completes:**
+
+1. **Configure Environment:**
+   ```bash
+   cp backend/.env.example backend/.env
+   cp frontend/.env.example frontend/.env
+   ```
+
+2. **Setup Database:**
+   ```bash
+   python scripts/setup-database.py
+   ```
+
+3. **Download ML Model:**
+   ```bash
+   python scripts/download-model.py
+   ```
+
+4. **Start Development Servers:**
+   ```bash
+   python start-dev.py
+   ```
+
+5. **Verify Everything Works:**
+   ```bash
+   python verify-setup.py
+   ```
+
+### **Manual Setup**
+
+If you prefer manual setup, follow the detailed instructions below.
+
+## 📋 Prerequisites
+
+- **Python 3.8+** - Backend API
+- **Node.js 18+** - Frontend and mobile development
+- **Git** - Version control (optional but recommended)
+- **MongoDB Atlas** - Free cloud database account
+
+## 🛠️ Detailed Setup
 
 ### Backend API
 
 ```bash
 cd backend
 python -m venv .venv
-. .\.venv\Scripts\Activate.ps1  # Windows PowerShell
+
+# Windows
+.venv\Scripts\Activate.ps1
+
+# macOS/Linux
+source .venv/bin/activate
+
 pip install -r requirements.txt
 ```
 
-Create `backend/.env`:
-
-```env
-MONGO_URI=mongodb+srv://<user>:<pass>@<cluster>.mongodb.net/riceguard_db
-DB_NAME=riceguard_db
-JWT_SECRET=CHANGE_ME_SUPER_SECRET
-JWT_ALGORITHM=HS256
-TOKEN_EXPIRE_HOURS=6
-UPLOAD_DIR=uploads
-MAX_UPLOAD_MB=8
-ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173
-```
-
-Place the trained TensorFlow model at `backend/ml/model.h5`, then run:
-
+**Environment Configuration:**
 ```bash
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+cp .env.example .env
+# Edit .env with your MongoDB Atlas credentials
 ```
 
-Health check: `http://127.0.0.1:8000/health`  
-Docs: `http://127.0.0.1:8000/docs`
+**Required Environment Variables:**
+```env
+MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/riceguard_db
+DB_NAME=riceguard_db
+JWT_SECRET=your-super-secret-key-here
+MODEL_PATH=../ml/model.h5
+```
 
 ### Frontend Web
 
 ```bash
 cd frontend
 npm install
+
+cp .env.example .env
+# Edit .env if needed (usually not necessary for local development)
 ```
 
-Create `frontend/.env`:
+### Mobile App (Optional)
 
-```env
-REACT_APP_API_URL=http://127.0.0.1:8000/api/v1
+```bash
+cd mobileapp/riceguard
+npm install
+
+# Setup mobile-specific configuration
+python ../../scripts/setup-mobile.py
 ```
 
-Start the dev server with `npm start` and open `http://localhost:3000`.
+## 🧠 ML Model Setup
+
+The ML model is **not** included in the repository due to its size (128MB).
+
+**Download Instructions:**
+```bash
+python scripts/download-model.py
+```
+
+**Place the model file at:**
+```
+ml/model.h5  # 128MB TensorFlow model
+```
+
+**Convert for Mobile (optional):**
+```bash
+python scripts/convert-to-tflite.py
+```
+
+## 🚦 Running the Application
+
+### **Start All Services**
+```bash
+python start-dev.py
+```
+
+### **Individual Services**
+```bash
+# Backend only
+python start-dev.py --backend-only
+
+# Frontend only
+python start-dev.py --frontend-only
+
+# Mobile only
+python start-dev.py --mobile-only
+
+# Skip mobile app
+python start-dev.py --no-mobile
+```
+
+### **Access Points**
+- 🖥️ **Backend API:** http://127.0.0.1:8000
+- 📚 **API Documentation:** http://127.0.0.1:8000/docs
+- 🌐 **Frontend Web:** http://localhost:3000
+- 📱 **Mobile App:** Scan QR code with Expo Go
+
+## 🔍 Verification & Testing
+
+**Comprehensive System Check:**
+```bash
+python verify-setup.py
+```
+
+**Database Verification:**
+```bash
+python scripts/setup-database.py
+```
+
+**ML Model Verification:**
+```bash
+python scripts/setup-ml-model.py
+```
 
 ### Mobile App (Expo)
 
