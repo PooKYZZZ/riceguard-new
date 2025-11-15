@@ -23,14 +23,30 @@ RiceGuard is a multi-platform rice leaf disease detection system developed by Te
 
 ## Development Commands
 
-### Quick Start (Recommended)
+### 🚀 Automated Setup (Recommended)
 ```bash
-# Start both backend and frontend with one command
-python dev_runner.py
+# Clone repository
+git clone https://github.com/PooKYZZZ/riceguard-new.git
+cd riceguard-new
+
+# One-command setup for your platform
+setup/setup.bat                    # Windows
+chmod +x setup/setup.sh && ./setup/setup.sh  # macOS/Linux
+python setup/setup.py              # Cross-platform Python
+
+# Configure environment files
+cp setup/environment/backend.env.example backend/.env
+cp setup/environment/frontend.env.example frontend/.env
+
+# Edit backend/.env with your MongoDB Atlas credentials
+
+# Start development servers
+python start-dev.py                # Start both backend and frontend
 ```
 
-### Backend Development
+### Individual Component Development
 ```bash
+# Backend only
 cd backend
 python -m venv .venv
 # Windows:
@@ -39,41 +55,35 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
-```
 
-### Frontend Development
-```bash
+# Frontend only
 cd frontend
 npm install
 npm start
+
+# Mobile app only
+cd mobileapp/riceguard
+npm install
+# Set environment variables:
+$env:EXPO_PUBLIC_API_BASE_URL="http://<PC_IP>:8000/api/v1"  # PowerShell
+export EXPO_PUBLIC_API_BASE_URL="http://<PC_IP>:8000/api/v1"  # bash/zsh
+npx expo start --lan --clear
 ```
 
-### Testing
+### Testing & Verification
 ```bash
+# Verify setup is working
+python verify-setup.py            # Comprehensive system verification
+
 # Backend tests
 cd backend
 python -m pytest tests/
-python -m pytest tests/test_fc_login.py  # Run specific test
+python -m pytest tests/test_fc_login.py
 
 # Frontend tests
 cd frontend
 npm test
-npm test --watch --coverage  # Run with coverage
-```
-
-### Mobile App Development
-```bash
-cd mobileapp/riceguard
-npm install
-
-# Set environment variables for development
-$env:EXPO_PUBLIC_API_BASE_URL="http://<PC_IP>:8000/api/v1"  # PowerShell
-export EXPO_PUBLIC_API_BASE_URL="http://<PC_IP>:8000/api/v1"  # bash/zsh
-
-# Start Expo development server
-$env:REACT_NATIVE_PACKAGER_HOSTNAME="<PC_IP>"  # PowerShell
-npx expo start --lan --clear  # Real device over LAN
-npx expo start --tunnel --clear  # Fallback tunnel mode
+npm test --watch --coverage
 ```
 
 ### Environment Setup
