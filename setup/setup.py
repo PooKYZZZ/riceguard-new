@@ -235,9 +235,10 @@ ALLOWED_EXTENSIONS=jpg,jpeg,png
 # ML Model Configuration
 # =============================================================================
 MODEL_PATH=../ml/model.h5
-CONFIDENCE_THRESHOLD=0.45
+LABELS_PATH=../ml/labels.txt
+CONFIDENCE_THRESHOLD=0.70
 CONFIDENCE_MARGIN=0.12
-TEMPERATURE=1.25
+TEMPERATURE=1.05
 IMG_SIZE=224
 
 # =============================================================================

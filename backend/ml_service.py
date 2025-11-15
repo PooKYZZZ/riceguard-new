@@ -43,7 +43,8 @@ def _validate_model_path(path_str: str) -> str:
         ]
 
         is_allowed = any(
-            str(abs_path).startswith(str(allowed_dir.resolve()))
+            abs_path.is_relative_to(allowed_dir.resolve()) if hasattr(abs_path, 'is_relative_to')
+            else str(abs_path).startswith(str(allowed_dir.resolve()))
             for allowed_dir in allowed_dirs
             if allowed_dir.exists()
         )
@@ -81,7 +82,8 @@ def _validate_labels_path(path_str: str) -> str:
         ]
 
         is_allowed = any(
-            str(abs_path).startswith(str(allowed_dir.resolve()))
+            abs_path.is_relative_to(allowed_dir.resolve()) if hasattr(abs_path, 'is_relative_to')
+            else str(abs_path).startswith(str(allowed_dir.resolve()))
             for allowed_dir in allowed_dirs
             if allowed_dir.exists()
         )
@@ -226,11 +228,15 @@ def get_labels() -> List[str]:
             "Create ml/labels.txt with the exact class order used during training."
         )
 
-    # SECURITY: Ensure file is readable and not world-writable
+    # SECURITY: Ensure file is readable and has reasonable permissions
     try:
         file_stat = path.stat()
-        if file_stat.st_mode & 0o002:  # Check world-writable bit
-            log.warning(f"Security: Labels file {path} is world-writable")
+        # On Windows, the permission bits work differently. We'll check if file exists and is readable.
+        # Skip the strict world-writable check on Windows as it causes false positives.
+        import platform
+        if platform.system() != 'Windows':
+            if file_stat.st_mode & 0o002:  # Check world-writable bit (Unix/Linux only)
+                log.warning(f"Security: Labels file {path} is world-writable")
     except Exception as e:
         log.warning(f"Cannot check file permissions for {path}: {e}")
 
@@ -282,9 +288,13 @@ def get_model():
     # SECURITY: Check file permissions
     try:
         file_stat = path.stat()
-        if file_stat.st_mode & 0o002:  # Check world-writable bit
-            log.error(f"Security: Model file {path} is world-writable - refusing to load")
-            raise PermissionError(f"Model file has insecure permissions: {path}")
+        # On Windows, the permission bits work differently. We'll check if file exists and is readable.
+        # Skip the strict world-writable check on Windows as it causes false positives.
+        import platform
+        if platform.system() != 'Windows':
+            if file_stat.st_mode & 0o002:  # Check world-writable bit (Unix/Linux only)
+                log.error(f"Security: Model file {path} is world-writable - refusing to load")
+                raise PermissionError(f"Model file has insecure permissions: {path}")
     except Exception as e:
         if isinstance(e, PermissionError):
             raise
