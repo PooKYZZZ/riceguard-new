@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-RiceGuard Safe Setup Script - FIXED VERSION
-This version only creates missing files and never overwrites existing ones
+RiceGuard Safe Setup Script - VERSION FOR TESTING
+This version ONLY checks dependencies and creates missing files - never overwrites existing ones
 """
 
 import os
@@ -97,118 +97,67 @@ def check_project_structure():
     print_success("All required project files found")
     return True
 
-def create_environment_templates():
-    """Create environment templates only if they don't exist"""
-    print_status("Checking environment templates...")
+def check_backend_dependencies():
+    """Check backend requirements"""
+    print_status("Checking backend dependencies...")
 
-    # Backend .env.example - ONLY CREATE IF MISSING
-    backend_env_example = BACKEND_DIR / ".env.example"
-    if not backend_env_example.exists():
-        backend_env_content = """# RiceGuard Backend Environment Configuration
-# Copy this file to .env and fill in your actual values
+    req_file = BACKEND_DIR / "requirements.txt"
+    if not req_file.exists():
+        print_error("backend/requirements.txt not found")
+        return False
 
-# Environment Settings
-ENVIRONMENT=development
+    try:
+        with open(req_file, 'r') as f:
+            requirements = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+        print_success(f"Found {len(requirements)} backend dependencies")
+        return True
+    except Exception as e:
+        print_error(f"Error reading requirements.txt: {e}")
+        return False
 
-# MongoDB Atlas Configuration
-MONGO_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<database_name>
-DB_NAME=riceguard_db
+def check_frontend_dependencies():
+    """Check frontend package.json"""
+    print_status("Checking frontend dependencies...")
 
-# JWT Authentication Configuration
-JWT_SECRET=<generate_strong_random_string_here_at_least_32_chars>
-JWT_ALGORITHM=HS256
-TOKEN_EXPIRE_HOURS=6
+    package_json = FRONTEND_DIR / "package.json"
+    if not package_json.exists():
+        print_error("frontend/package.json not found")
+        return False
 
-# Security Settings
-BCRYPT_ROUNDS=12
+    try:
+        import json
+        with open(package_json, 'r') as f:
+            package_data = json.load(f)
+        dependencies = package_data.get('dependencies', {})
+        print_success(f"Found {len(dependencies)} frontend dependencies")
+        return True
+    except Exception as e:
+        print_error(f"Error reading package.json: {e}")
+        return False
 
-# File Upload Configuration
-UPLOAD_DIR=uploads
-MAX_UPLOAD_MB=8
-MODEL_PATH=../ml/model.h5
+def check_virtual_environment():
+    """Check if virtual environment exists"""
+    print_status("Checking Python virtual environment...")
 
-# ML Model Configuration
-CONFIDENCE_THRESHOLD=0.45
-CONFIDENCE_MARGIN=0.12
-TEMPERATURE=1.25
-IMG_SIZE=224
-
-# CORS Configuration (comma-separated list of allowed origins)
-ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173
-
-# Monitoring and Logging
-LOG_LEVEL=INFO
-ENABLE_SECURITY_LOGGING=true
-ENABLE_PERFORMANCE_MONITORING=true
-"""
-        try:
-            with open(backend_env_example, "w") as f:
-                f.write(backend_env_content)
-            print_success("Backend .env.example created")
-        except Exception as e:
-            print_error(f"Failed to create backend .env.example: {e}")
-            return False
+    venv_dir = BACKEND_DIR / ".venv"
+    if venv_dir.exists():
+        print_success("Virtual environment found")
+        return True
     else:
-        print_success("Backend .env.example already exists")
+        print_warning("Virtual environment not found - you may need to create it")
+        return False
 
-    # Frontend .env.example - ONLY CREATE IF MISSING
-    frontend_env_example = FRONTEND_DIR / ".env.example"
-    if not frontend_env_example.exists():
-        frontend_env_content = """# =============================================================================
-# RiceGuard Frontend Environment Configuration
-# =============================================================================
-# Copy this file to .env and update the API URL if needed
+def check_node_modules():
+    """Check if node_modules exists"""
+    print_status("Checking Node.js modules...")
 
-# =============================================================================
-# API Configuration
-# =============================================================================
-# Backend API URL - update this to match your backend server
-REACT_APP_API_URL=http://127.0.0.1:8000/api/v1
-
-# =============================================================================
-# Development Configuration
-# =============================================================================
-# Enable/disable debug mode in development
-REACT_APP_DEBUG=true
-
-# Application version (for cache busting and debugging)
-REACT_APP_VERSION=1.0.0
-
-# Environment name
-REACT_APP_ENVIRONMENT=development
-
-# =============================================================================
-# Feature Flags
-# =============================================================================
-# Enable experimental features
-REACT_APP_ENABLE_EXPERIMENTAL_FEATURES=false
-
-# Enable analytics tracking (for production)
-REACT_APP_ENABLE_ANALYTICS=false
-
-# =============================================================================
-# UI Configuration
-# =============================================================================
-# Application title
-REACT_APP_TITLE=RiceGuard - Rice Leaf Disease Detection
-
-# Default theme
-REACT_APP_DEFAULT_THEME=light
-
-# Enable dark mode
-REACT_APP_ENABLE_DARK_MODE=true
-"""
-        try:
-            with open(frontend_env_example, "w") as f:
-                f.write(frontend_env_content)
-            print_success("Frontend .env.example created")
-        except Exception as e:
-            print_error(f"Failed to create frontend .env.example: {e}")
-            return False
+    node_modules_dir = FRONTEND_DIR / "node_modules"
+    if node_modules_dir.exists():
+        print_success("Node.js modules found")
+        return True
     else:
-        print_success("Frontend .env.example already exists")
-
-    return True
+        print_warning("node_modules not found - you may need to run 'npm install'")
+        return False
 
 def create_missing_directories():
     """Create missing directories (safe operation)"""
@@ -236,21 +185,46 @@ def create_missing_directories():
 
     return True
 
-def check_existing_development_tools():
-    """Check if development tools exist - DO NOT CREATE"""
-    print_status("Checking development tools...")
+def check_environment_files():
+    """Check if environment files exist"""
+    print_status("Checking environment configuration...")
 
-    tools_to_check = [
-        "start-dev.py",
-        "verify-setup.py"
+    backend_env_example = BACKEND_DIR / ".env.example"
+    frontend_env_example = FRONTEND_DIR / ".env.example"
+
+    if not backend_env_example.exists():
+        print_warning("backend/.env.example not found")
+    else:
+        print_success("backend/.env.example found")
+
+    if not frontend_env_example.exists():
+        print_warning("frontend/.env.example not found")
+    else:
+        print_success("frontend/.env.example found")
+
+    return True
+
+def run_safety_checks():
+    """Run comprehensive safety checks"""
+    print_status("Running safety checks...")
+
+    # Check for dangerous file patterns
+    dangerous_patterns = [
+        "*.exe", "*.bat", "*.cmd", "*.scr", "*.vbs", "*.js", "*.jar"
     ]
 
-    for tool in tools_to_check:
-        tool_path = REPO_ROOT / tool
-        if tool_path.exists():
-            print_success(f"Found: {tool}")
-        else:
-            print_warning(f"Missing: {tool} (you can create this manually if needed)")
+    suspicious_files = []
+    for pattern in dangerous_patterns:
+        for file_path in REPO_ROOT.rglob(pattern):
+            if file_path.is_file() and file_path.name not in ['setup.bat', 'setup.sh', 'start-dev.py']:
+                suspicious_files.append(file_path)
+
+    if suspicious_files:
+        print_warning(f"Found {len(suspicious_files)} suspicious files - please review manually")
+        for file_path in suspicious_files[:5]:  # Show first 5
+            print(f"  - {file_path}")
+    else:
+        print_success("No suspicious files found")
 
     return True
 
@@ -262,9 +236,13 @@ def main():
     checks = [
         ("System Requirements", check_system_requirements),
         ("Project Structure", check_project_structure),
-        ("Environment Templates", create_environment_templates),
-        ("Missing Directories", create_missing_directories),
-        ("Development Tools", check_existing_development_tools)
+        ("Backend Dependencies", check_backend_dependencies),
+        ("Frontend Dependencies", check_frontend_dependencies),
+        ("Virtual Environment", check_virtual_environment),
+        ("Node.js Modules", check_node_modules),
+        ("Environment Files", check_environment_files),
+        ("Safety Checks", run_safety_checks),
+        ("Create Missing Directories", create_missing_directories)
     ]
 
     passed = 0
@@ -290,13 +268,12 @@ def main():
         print("   cp backend/.env.example backend/.env")
         print("   cp frontend/.env.example frontend/.env")
         print("2. Edit backend/.env with your MongoDB Atlas credentials")
-        print("3. Install dependencies:")
+        print("3. Install dependencies if needed:")
         print("   cd backend && python -m venv .venv && .venv\\Scripts\\Activate")
         print("   pip install -r requirements.txt")
         print("   cd ../frontend && npm install")
         print("4. Start development:")
-        print("   python start-dev.py  (if available)")
-        print("   or run backend and frontend separately")
+        print("   python start-dev.py")
         return True
     else:
         print_warning("Some checks failed. Please review the output above.")

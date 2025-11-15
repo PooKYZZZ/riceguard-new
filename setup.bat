@@ -1,11 +1,13 @@
 @echo off
-REM RiceGuard One-Click Setup for Windows
-REM Cross-platform setup for all team members
+REM RiceGuard Safe Setup for Windows - READ-ONLY VERSION
+REM This script only checks and reports - never modifies existing files
 
 echo.
-echo =====================================
-echo   RiceGuard Automated Setup (Windows)
-echo =====================================
+echo ========================================
+echo   RiceGuard Safe Setup Check (Windows)
+echo ========================================
+echo.
+echo This script will ONLY check your setup - it will NOT modify any files
 echo.
 
 REM Check if Python is installed
@@ -26,34 +28,23 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo ✓ Python and Node.js found
+echo Found Python and Node.js
 echo.
 
-REM Run the main setup script
-echo Starting RiceGuard setup...
+REM Run the safe setup check script
+echo Running setup check...
 echo.
 
-python setup.py
+python setup-safe.py
 
 if errorlevel 1 (
     echo.
-    echo Setup completed with errors. Please check the output above.
+    echo Setup check found issues. Please follow the recommendations above.
     echo.
-    echo Common fixes:
-    echo 1. Run as Administrator
-    echo 2. Check internet connection
-    echo 3. Temporarily disable antivirus
-    echo 4. Read TROUBLESHOOTING.md for help
 ) else (
     echo.
-    echo ✓ Setup completed successfully!
+    echo Setup check passed! Your project is ready.
     echo.
-    echo Next steps:
-    echo 1. Configure backend\.env (copy from .env.example)
-    echo 2. Download ML model to ml\model.h5
-    echo 3. Run: python start-dev.py
-    echo 4. Verify with: python verify-setup.py
 )
 
-echo.
 pause
