@@ -20,9 +20,57 @@ RiceGuard is Team 27's multi-platform project for detecting rice leaf diseases. 
 
 ```
 riceguard/
-|- backend/   # FastAPI API, auth, scan history, recommendations
-|- frontend/  # React web interface for uploads and history
-|- ml/        # Shared ML artifacts and preprocessing helpers
+├── README.md                      # Main project documentation
+├── CLAUDE.md                      # Claude AI development guide
+├── dev_runner.py                  # Development runner (start both services)
+├── start-dev.py                   # Alternative development starter
+├── verify-setup.py                # Setup verification script
+│
+├── setup/                         # All setup and installation files
+│   ├── setup.py                   # Main Python setup script
+│   ├── setup.bat                  # Windows batch setup
+│   ├── setup.sh                   # Unix/Linux shell setup
+│   ├── requirements.txt           # Python dependencies
+│   └── environment/               # Environment configuration templates
+│       ├── backend.env.example    # Backend environment template
+│       └── frontend.env.example   # Frontend environment template
+│
+├── docs/                          # All documentation
+│   ├── README_SETUP.md           # Setup instructions
+│   ├── SETUP_REDESIGN_SUMMARY.md  # Setup documentation
+│   ├── TROUBLESHOOTING.md        # Troubleshooting guide
+│   ├── TEST_RESULTS.md           # Test results
+│   └── API/                      # API documentation
+│
+├── scripts/                       # Utility and maintenance scripts
+│   ├── setup-database.py         # Database setup
+│   ├── setup-ml-model.py         # ML model setup
+│   └── setup-mobile.py           # Mobile app setup
+│
+├── backend/                       # Backend application
+│   ├── main.py                   # FastAPI application
+│   ├── routers.py                # API routes
+│   ├── models.py                 # Pydantic models
+│   ├── db.py                     # Database connection
+│   ├── ml_service.py             # ML integration
+│   ├── storage.py                # File handling
+│   ├── requirements.txt          # Backend dependencies
+│   ├── .env                      # Backend environment (local)
+│   └── uploads/                  # File upload directory
+│
+├── frontend/                      # Frontend application
+│   ├── src/                      # React source code
+│   ├── public/                   # Static assets
+│   ├── package.json              # Node.js dependencies
+│   └── .env                      # Frontend environment (local)
+│
+├── ml/                           # Machine learning assets
+│   └── model.h5                  # Trained model (128MB - not in git)
+│
+├── mobileapp/                    # Mobile application
+│   └── (React Native project)
+│
+└── RiceGuard_Full_Project_Context.md  # Complete project context
 ```
 
 ## 🚀 Quick Start (One-Command Setup)
@@ -33,18 +81,18 @@ The easiest way to get RiceGuard running on any platform:
 
 **Windows:**
 ```bash
-setup.bat
+setup\setup.bat
 ```
 
 **macOS/Linux:**
 ```bash
-chmod +x setup.sh
-./setup.sh
+chmod +x setup/setup.sh
+./setup/setup.sh
 ```
 
 **Python (Cross-platform):**
 ```bash
-python setup.py
+python setup/setup.py
 ```
 
 This automated setup handles:

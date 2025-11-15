@@ -17,7 +17,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 # Configuration
-REPO_ROOT = Path(__file__).resolve().parent
+REPO_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_DIR = REPO_ROOT / "backend"
 FRONTEND_DIR = REPO_ROOT / "frontend"
 SCRIPTS_DIR = REPO_ROOT / "scripts"
