@@ -54,34 +54,40 @@ This automated setup handles:
 - ✅ Environment file templates
 - ✅ Directory structure setup
 - ✅ Development tools creation
+- 🔒 **Never overwrites existing files - your data is safe!**
 
 **After setup completes:**
 
 1. **Configure Environment:**
    ```bash
+   # Copy templates (Windows)
+   copy backend\.env.example backend\.env
+   copy frontend\.env.example frontend\.env
+
+   # Copy templates (Linux/Mac)
    cp backend/.env.example backend/.env
    cp frontend/.env.example frontend/.env
    ```
 
-2. **Setup Database:**
-   ```bash
-   python scripts/setup-database.py
-   ```
+2. **Setup MongoDB Atlas:**
+   - Get free cluster at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+   - Edit `backend/.env` with your MongoDB credentials
+   - Generate JWT secret: `openssl rand -hex 32`
 
-3. **Download ML Model:**
-   ```bash
-   python scripts/download-model.py
-   ```
-
-4. **Start Development Servers:**
+3. **Start Development Servers:**
    ```bash
    python start-dev.py
    ```
 
-5. **Verify Everything Works:**
+4. **Verify Everything Works:**
    ```bash
    python verify-setup.py
    ```
+
+**Access Points:**
+- 🖥️ **Backend API:** http://127.0.0.1:8000
+- 📚 **API Documentation:** http://127.0.0.1:8000/docs
+- 🌐 **Frontend Web:** http://localhost:3000
 
 ### **Manual Setup**
 

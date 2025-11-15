@@ -1,8 +1,12 @@
 #!/bin/bash
-# RiceGuard One-Click Setup for macOS and Linux
-# Cross-platform setup for all team members
+# =============================================================================
+# RiceGuard Automated Setup Script for Linux and macOS
+# =============================================================================
+# This script sets up the entire RiceGuard development environment
+# It safely handles dependencies, environment files, and configuration
+# =============================================================================
 
-set -e  # Exit on any error
+set -e  # Exit on error
 
 # Colors for output
 RED='\033[0;31m'
@@ -11,115 +15,219 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
+WHITE='\033[1;37m'
 NC='\033[0m' # No Color
 
-echo -e "${PURPLE}"
-echo "====================================="
-echo "  RiceGuard Automated Setup (Unix)"
-echo "====================================="
-echo -e "${NC}"
-
-# Function to print colored messages
-print_status() {
-    echo -e "${BLUE}→${NC} $1"
+# Print functions
+print_header() {
+    echo -e "${WHITE}${PURPLE}=============================================================================${NC}"
+    echo -e "${WHITE}${PURPLE}                           🌾 RiceGuard Setup${NC}"
+    echo -e "${WHITE}${PURPLE}=============================================================================${NC}"
 }
 
 print_success() {
-    echo -e "${GREEN}✅${NC} $1"
+    echo -e "${GREEN}✅ $1${NC}"
 }
 
 print_error() {
-    echo -e "${RED}❌${NC} $1"
+    echo -e "${RED}❌ $1${NC}"
 }
 
 print_warning() {
-    echo -e "${YELLOW}⚠️${NC} $1"
+    echo -e "${YELLOW}⚠️  $1${NC}"
 }
 
-# Check if Python is installed
-if ! command -v python3 &> /dev/null; then
-    print_error "Python 3 is not installed"
-    echo "Please install Python 3.8+:"
-    echo "  Ubuntu/Debian: sudo apt install python3 python3-pip python3-venv"
-    echo "  macOS: brew install python@3.9"
-    echo "  CentOS/RHEL: sudo yum install python3 python3-pip"
-    exit 1
-fi
+print_status() {
+    echo -e "${CYAN}→ $1${NC}"
+}
 
-# Check Python version
-python_version=$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
-if python3 -c 'import sys; exit(0 if sys.version_info >= (3, 8) else 1)'; then
-    print_success "Python $python_version found"
-else
-    print_error "Python $python_version found, need 3.8+"
-    exit 1
-fi
+print_info() {
+    echo -e "${BLUE}ℹ️  $1${NC}"
+}
 
-# Check if Node.js is installed
-if ! command -v node &> /dev/null; then
-    print_error "Node.js is not installed"
-    echo "Please install Node.js 18+:"
-    echo "  Ubuntu/Debian: curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash - && sudo apt install nodejs"
-    echo "  macOS: brew install node"
-    echo "  CentOS/RHEL: curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash - && sudo yum install nodejs"
-    exit 1
-fi
+# Check if running on a supported system
+check_system() {
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        print_success "Linux system detected"
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        print_success "macOS system detected"
+    else
+        print_warning "Unsupported system: $OSTYPE"
+        print_info "This script is designed for Linux and macOS"
+    fi
+}
 
-node_version=$(node --version)
-print_success "Node.js $node_version found"
+# Check system requirements
+check_requirements() {
+    print_status "Checking system requirements..."
 
-# Check if npm is installed
-if ! command -v npm &> /dev/null; then
-    print_error "npm is not installed"
-    exit 1
-fi
+    # Check Python
+    if command -v python3 &> /dev/null; then
+        python_version=$(python3 --version | cut -d' ' -f2)
+        print_success "Python $python_version found"
+        PYTHON_CMD="python3"
+    elif command -v python &> /dev/null; then
+        python_version=$(python --version | cut -d' ' -f2)
+        print_success "Python $python_version found"
+        PYTHON_CMD="python"
+    else
+        print_error "Python is not installed or not in PATH"
+        print_info "Please install Python 3.8+ from https://python.org"
+        exit 1
+    fi
 
-npm_version=$(npm --version)
-print_success "npm $npm_version found"
+    # Check Python version
+    python_major=$($PYTHON_CMD -c "import sys; print(sys.version_info.major)")
+    python_minor=$($PYTHON_CMD -c "import sys; print(sys.version_info.minor)")
 
-echo ""
-print_status "System requirements check passed"
-echo ""
+    if [[ $python_major -lt 3 ]] || [[ $python_major -eq 3 && $python_minor -lt 8 ]]; then
+        print_error "Python $python_major.$python_minor is too old. Requires Python 3.8+"
+        exit 1
+    fi
+
+    # Check Node.js
+    if command -v node &> /dev/null; then
+        node_version=$(node --version)
+        print_success "Node.js $node_version found"
+    else
+        print_error "Node.js is not installed or not in PATH"
+        print_info "Please install Node.js 18+ from https://nodejs.org"
+        exit 1
+    fi
+
+    # Check npm
+    if command -v npm &> /dev/null; then
+        npm_version=$(npm --version)
+        print_success "npm $npm_version found"
+    else
+        print_error "npm is not installed or not in PATH"
+        print_info "npm should be installed with Node.js"
+        exit 1
+    fi
+
+    # Check git (optional but recommended)
+    if command -v git &> /dev/null; then
+        git_version=$(git --version | cut -d' ' -f3)
+        print_success "Git $git_version found"
+    else
+        print_warning "Git not found - recommended for development"
+    fi
+}
+
+# Show setup information
+show_info() {
+    echo
+    print_header
+    echo
+    echo "This script will automatically set up your RiceGuard development environment."
+    echo "It will install dependencies and create necessary configuration files."
+    print_success "Existing files will NEVER be overwritten - your data is safe."
+    echo
+}
 
 # Check if we're in the right directory
-if [ ! -f "setup.py" ]; then
-    print_error "setup.py not found. Please run this script from the RiceGuard root directory."
-    exit 1
-fi
+check_directory() {
+    if [ ! -f "setup.py" ]; then
+        print_error "setup.py not found. Please run this script from the RiceGuard root directory."
+        exit 1
+    fi
 
-# Make the script executable
-chmod +x setup.py
-chmod +x start-dev.py
-chmod +x verify-setup.py
-chmod +x scripts/*.py
+    # Make scripts executable
+    chmod +x setup.py 2>/dev/null || true
+    chmod +x start-dev.py 2>/dev/null || true
+    chmod +x verify-setup.py 2>/dev/null || true
+    if [ -d "scripts" ]; then
+        chmod +x scripts/*.py 2>/dev/null || true
+    fi
+}
 
 # Run the main setup script
-print_status "Starting RiceGuard setup..."
-echo ""
+run_setup() {
+    echo
+    print_status "Starting RiceGuard automated setup..."
+    print_info "This may take a few minutes..."
+    echo
 
-if python3 setup.py; then
-    echo ""
-    print_success "Setup completed successfully!"
-    echo ""
+    # Run the Python setup script
+    if $PYTHON_CMD setup.py; then
+        echo
+        print_success "Setup completed successfully!"
+        show_success_info
+    else
+        echo
+        print_warning "Setup completed with some issues"
+        show_troubleshooting_info
+        exit 1
+    fi
+}
+
+# Show success information
+show_success_info() {
+    echo
+    print_header
+    print_success "🎉 Setup Completed Successfully!"
+    echo
+    echo "Your RiceGuard development environment is ready!"
+    echo
     echo "Next steps:"
-    echo "1. Configure backend/.env (copy from .env.example)"
-    echo "2. Download ML model to ml/model.h5"
-    echo "3. Run: python3 start-dev.py"
-    echo "4. Verify with: python3 verify-setup.py"
-    echo ""
-    echo "🚀 To start development: python3 start-dev.py"
-    echo "🔍 To verify setup: python3 verify-setup.py"
-    echo "📚 For troubleshooting: read TROUBLESHOOTING.md"
-else
-    echo ""
-    print_warning "Setup completed with errors. Please check the output above."
-    echo ""
-    echo "Common fixes:"
-    echo "1. Check internet connection"
-    echo "2. Try running with sudo: sudo ./setup.sh"
-    echo "3. Install build tools: sudo apt install build-essential (Ubuntu)"
-    echo "4. Read TROUBLESHOOTING.md for detailed help"
-    exit 1
-fi
+    echo "  1. Configure environment files (if not done):"
+    echo "     - Edit backend/.env with your MongoDB Atlas credentials"
+    echo "     - Get free cluster from: https://www.mongodb.com/cloud/atlas"
+    echo
+    echo "  2. Start development servers:"
+    echo "     python start-dev.py"
+    echo
+    echo "  3. Open your browser:"
+    echo "     - Frontend: http://localhost:3000"
+    echo "     - API Docs: http://127.0.0.1:8000/docs"
+    echo
+    echo "  4. Verify setup (optional):"
+    echo "     python verify-setup.py"
+    echo
+    echo "Need help? Check CLAUDE.md for documentation"
+    echo
+}
 
-echo ""
+# Show troubleshooting information
+show_troubleshooting_info() {
+    echo
+    print_header
+    print_warning "⚠️  Setup Completed with Issues"
+    echo
+    echo "Some setup steps encountered problems. Please review the output above."
+    echo
+    echo "Common solutions:"
+    echo "  1. If dependencies failed to install, try running the setup again"
+    echo "  2. If permissions are required, try with sudo:"
+    echo "     sudo $0"
+    echo "  3. If network issues occurred, check your internet connection"
+    echo "  4. Install build tools (Ubuntu/Debian): sudo apt install build-essential"
+    echo
+    echo "Manual setup steps:"
+    echo "  1. Copy environment files:"
+    echo "     cp backend/.env.example backend/.env"
+    echo "     cp frontend/.env.example frontend/.env"
+    echo
+    echo "  2. Edit backend/.env with your MongoDB Atlas credentials"
+    echo "     - Get free cluster from: https://www.mongodb.com/cloud/atlas"
+    echo "     - Generate JWT secret: openssl rand -hex 32"
+    echo
+    echo "  3. Start development:"
+    echo "     python start-dev.py"
+    echo
+}
+
+# Main execution
+main() {
+    # Trap Ctrl+C and exit gracefully
+    trap 'echo -e "\n${YELLOW}Setup interrupted by user${NC}"; exit 1' INT
+
+    show_info
+    check_system
+    check_requirements
+    check_directory
+    run_setup
+}
+
+# Run main function
+main "$@"

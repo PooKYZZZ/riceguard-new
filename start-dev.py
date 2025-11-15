@@ -21,34 +21,85 @@ FRONTEND_DIR = REPO_ROOT / "frontend"
 MOBILE_DIR = REPO_ROOT / "mobileapp" / "riceguard"
 
 class Colors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
+    def __init__(self):
+        import platform
+        self.is_windows = platform.system() == 'Windows'
+        self.use_color = not self.is_windows
+        if self.is_windows:
+            try:
+                import ctypes
+                kernel32 = ctypes.windll.kernel32
+                kernel32.SetConsoleOutputCP(65001)
+                h_out = kernel32.GetStdHandle(-11)
+                mode = ctypes.c_ulong()
+                kernel32.GetConsoleMode(h_out, ctypes.byref(mode))
+                kernel32.SetConsoleMode(h_out, mode | 0x0004)
+                self.use_color = True
+            except:
+                self.use_color = False
+
+    def __getattr__(self, name):
+        colors = {
+            'HEADER': '\033[95m',
+            'OKBLUE': '\033[94m',
+            'OKCYAN': '\033[96m',
+            'OKGREEN': '\033[92m',
+            'WARNING': '\033[93m',
+            'FAIL': '\033[91m',
+            'ENDC': '\033[0m',
+            'BOLD': '\033[1m'
+        }
+        return colors.get(name, '') if self.use_color else ''
+
+# Safe print function for Windows
+def safe_print(*args, **kwargs):
+    """Print function that handles Unicode characters safely on Windows"""
+    try:
+        print(*args, **kwargs)
+    except UnicodeEncodeError:
+        # Fallback: replace problematic characters
+        text = ' '.join(str(arg) for arg in args)
+        safe_text = text.encode('ascii', 'replace').decode('ascii')
+        print(safe_text, **kwargs)
+
+colors = Colors()
 
 def print_header(message):
     """Print styled header"""
-    print(f"{Colors.HEADER}{Colors.BOLD}{message}{Colors.ENDC}")
+    try:
+        safe_print(f"{colors.HEADER}{colors.BOLD}{message}{colors.ENDC}")
+    except:
+        safe_print(f"=== {message} ===")
 
-def print_status(message, color=Colors.OKCYAN):
+def print_status(message, color=None):
     """Print colored status message"""
-    print(f"{color}→{Colors.ENDC} {message}")
+    if color is None:
+        color = colors.OKCYAN
+    try:
+        safe_print(f"{color}→{colors.ENDC} {message}")
+    except:
+        safe_print(f"-> {message}")
 
 def print_success(message):
     """Print success message"""
-    print(f"{Colors.OKGREEN}✅{Colors.ENDC} {message}")
+    try:
+        safe_print(f"{colors.OKGREEN}✅{colors.ENDC} {message}")
+    except:
+        safe_print(f"[OK] {message}")
 
 def print_error(message):
     """Print error message"""
-    print(f"{Colors.FAIL}❌{Colors.ENDC} {message}")
+    try:
+        safe_print(f"{colors.FAIL}❌{colors.ENDC} {message}")
+    except:
+        safe_print(f"[ERROR] {message}")
 
 def print_warning(message):
     """Print warning message"""
-    print(f"{Colors.WARNING}⚠️{Colors.ENDC} {message}")
+    try:
+        safe_print(f"{colors.WARNING}⚠️{colors.ENDC} {message}")
+    except:
+        safe_print(f"[WARNING] {message}")
 
 class ServiceManager:
     """Manages multiple development services"""
@@ -317,7 +368,7 @@ def check_prerequisites():
 
 def show_usage():
     """Show usage instructions"""
-    print_header("🌾 RiceGuard Development Server")
+    print_header("RiceGuard Development Server")
     print("=" * 50)
     print()
     print("Usage:")
@@ -331,9 +382,9 @@ def show_usage():
     print("  --help         Show this help message")
     print()
     print("Services:")
-    print("  🖥️  Backend API:   http://127.0.0.1:8000")
-    print("  🌐 Frontend Web:  http://localhost:3000")
-    print("  📱 Mobile App:    Expo Go QR code")
+    print("  [+] Backend API:   http://127.0.0.1:8000")
+    print("  [+] Frontend Web:  http://localhost:3000")
+    print("  [+] Mobile App:    Expo Go QR code")
     print()
     print("Press Ctrl+C to stop all services")
     print("=" * 50)
@@ -353,7 +404,7 @@ def main():
     no_mobile = "--no-mobile" in args
 
     # Show header
-    print_header("🚀 RiceGuard Development Server")
+    print_header("RiceGuard Development Server")
     print("=" * 50)
 
     # Check prerequisites
@@ -392,25 +443,28 @@ def main():
         # Wait for startup
         if manager.wait_for_startup():
             print("\n" + "=" * 50)
-            print(f"{Colors.BOLD}🎉 Development servers started successfully!{Colors.ENDC}")
+            try:
+                print(f"{colors.BOLD}Development servers started successfully!{colors.ENDC}")
+            except:
+                print("Development servers started successfully!")
             print()
-            print("🔗 Available Services:")
+            print("[INFO] Available Services:")
             if backend_only or not frontend_only:
-                print(f"  🖥️  Backend API:    http://127.0.0.1:8000")
-                print(f"  📚 API Docs:      http://127.0.0.1:8000/docs")
+                print(f"  [+] Backend API:    http://127.0.0.1:8000")
+                print(f"  [+] API Docs:      http://127.0.0.1:8000/docs")
             if frontend_only or not backend_only:
-                print(f"  🌐 Frontend Web:   http://localhost:3000")
+                print(f"  [+] Frontend Web:   http://localhost:3000")
             if not no_mobile and not backend_only and not frontend_only and not mobile_only:
-                print(f"  📱 Mobile App:     Scan QR code in Expo Go")
+                print(f"  [+] Mobile App:     Scan QR code in Expo Go")
 
             print()
-            print("🛠️ Development Tools:")
-            print(f"  🔍 Verify Setup:   python verify-setup.py")
-            print(f"  🗄️ Database:       python scripts/setup-database.py")
-            print(f"  🧠 ML Model:       python scripts/setup-ml-model.py")
+            print("[INFO] Development Tools:")
+            print(f"  [+] Verify Setup:   python verify-setup.py")
+            print(f"  [+] Database:       python scripts/setup-database.py")
+            print(f"  [+] ML Model:       python scripts/setup-ml-model.py")
 
             print()
-            print("⚠️ Press Ctrl+C to stop all servers")
+            print("[WARNING] Press Ctrl+C to stop all servers")
             print("=" * 50)
 
             # Monitor services
@@ -420,7 +474,7 @@ def main():
             return 1
 
     except KeyboardInterrupt:
-        print(f"\n{Colors.WARNING}Shutdown requested by user{Colors.ENDC}")
+        print_warning("Shutdown requested by user")
     except Exception as e:
         print_error(f"Unexpected error: {e}")
         return 1
