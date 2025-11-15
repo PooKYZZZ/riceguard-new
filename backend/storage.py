@@ -3,12 +3,16 @@
 import os
 import uuid
 import hashlib
+import logging
 from datetime import datetime, timezone
 from typing import Optional, Tuple
 from fastapi import UploadFile, HTTPException, status
 from PIL import Image
 import io
 from settings import UPLOAD_DIR, MAX_UPLOAD_MB
+
+# Setup logger for storage operations
+logger = logging.getLogger("riceguard.storage")
 
 # Enhanced allowed MIME types with magic number validation
 ALLOWED_MIME_TYPES = {
@@ -73,7 +77,7 @@ def calculate_file_hash(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
 
 def save_upload(file: UploadFile) -> str:
-    """Save an uploaded image to /uploads with comprehensive security validation."""
+    """Save an uploaded image to /uploads with streaming to prevent DoS attacks."""
     ensure_upload_dir()
 
     # Basic MIME type validation
@@ -83,52 +87,8 @@ def save_upload(file: UploadFile) -> str:
             detail=f"Unsupported file type. Allowed types: {', '.join(ALLOWED_MIME_TYPES.keys())}"
         )
 
-    # Read file content
-    try:
-        file.file.seek(0)  # Reset file pointer
-        content = file.file.read()
-        file.file.close()
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to read file content"
-        )
-
-    # File size validation
-    size_mb = len(content) / (1024 * 1024)
-    if size_mb > MAX_UPLOAD_MB:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"File size {size_mb:.1f}MB exceeds maximum allowed size of {MAX_UPLOAD_MB}MB"
-        )
-
-    # Minimum file size check (prevent empty files)
-    if len(content) < 1024:  # At least 1KB
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File is too small to be a valid image"
-        )
-
-    # Determine expected file type from MIME type
-    expected_type = 'jpeg' if file.content_type == 'image/jpeg' else 'png'
-
-    # File signature validation to prevent type spoofing
-    if not validate_file_signature(content, expected_type):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File signature does not match its declared type"
-        )
-
-    # Image content validation
-    is_valid, error_msg = validate_image_content(content)
-    if not is_valid:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error_msg
-        )
-
-    # Calculate file hash for duplicate detection and integrity
-    file_hash = calculate_file_hash(content)
+    # Reset file pointer
+    file.file.seek(0)
 
     # Build directory path: /uploads/YYYY/MM/
     now = datetime.now(timezone.utc)
@@ -137,45 +97,169 @@ def save_upload(file: UploadFile) -> str:
 
     # Create secure filename
     ext = ALLOWED_MIME_TYPES[file.content_type][0]  # Use first allowed extension
-    # Sanitize original filename for logging purposes
     safe_original = sanitize_filename(file.filename or "upload")
     unique_filename = f"{uuid.uuid4().hex}{ext}"
-
     path = os.path.join(subdir, unique_filename)
 
-    # Additional security: make sure the path doesn't escape the upload directory
-    try:
-        # Resolve the path and ensure it's within UPLOAD_DIR
-        abs_upload_dir = os.path.abspath(UPLOAD_DIR)
-        abs_file_path = os.path.abspath(path)
-
-        if not abs_file_path.startswith(abs_upload_dir):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid file path"
-            )
-    except Exception:
+    # Security: validate path is within upload directory
+    abs_upload_dir = os.path.abspath(UPLOAD_DIR)
+    abs_file_path = os.path.abspath(path)
+    if not abs_file_path.startswith(abs_upload_dir):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid file path"
         )
 
-    # Write file to disk
+    # Stream the file to disk with size monitoring and enhanced resource cleanup
+    max_bytes = MAX_UPLOAD_MB * 1024 * 1024
+    min_bytes = 1024  # 1KB minimum
+    total_bytes = 0
+    hash_obj = hashlib.sha256()
+    header_bytes = b''
+    file_handle = None
+
     try:
+        # SECURITY: Use context manager for automatic file handle cleanup
         with open(path, "wb") as f:
-            f.write(content)
+            file_handle = f  # Keep reference for error handling
+            while True:
+                try:
+                    chunk = file.file.read(8192)  # 8KB chunks for streaming
+                    if not chunk:
+                        break
+
+                    # Update counters and hash
+                    total_bytes += len(chunk)
+                    hash_obj.update(chunk)
+
+                    # Collect first few bytes for signature validation
+                    if len(header_bytes) < 1024:
+                        header_bytes += chunk
+                        header_bytes = header_bytes[:1024]
+
+                    # Size validation during streaming
+                    if total_bytes > max_bytes:
+                        raise HTTPException(
+                            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                            detail=f"File size exceeds maximum allowed size of {MAX_UPLOAD_MB}MB"
+                        )
+
+                    # Write chunk to file
+                    f.write(chunk)
+
+                except MemoryError as mem_error:
+                    log.error(f"Memory error during file upload: {mem_error}")
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail="File too large for available memory"
+                    )
+                except OSError as os_error:
+                    log.error(f"File system error during upload: {os_error}")
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="File system error during upload"
+                    )
+
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
     except Exception as e:
+        log.error(f"Unexpected error during file upload: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to save file"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to save file: {str(e)}"
+        )
+    finally:
+        # SECURITY: Ensure file handle is properly closed
+        try:
+            if hasattr(file, 'file') and hasattr(file.file, 'close'):
+                file.file.close()
+        except Exception as close_error:
+            log.warning(f"Error closing upload file handle: {close_error}")
+
+        # Clean up partial file on error
+        if os.path.exists(path) and total_bytes == 0:
+            try:
+                os.unlink(path)
+                log.debug(f"Cleaned up empty file: {path}")
+            except Exception as cleanup_error:
+                log.warning(f"Failed to clean up partial file {path}: {cleanup_error}")
+
+    # Final size validation
+    size_mb = total_bytes / (1024 * 1024)
+    if total_bytes < min_bytes:
+        os.unlink(path)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File is too small to be a valid image"
         )
 
-    # Normalize path for static serving (always use forward slashes)
+    # File signature validation using collected header
+    expected_type = 'jpeg' if file.content_type == 'image/jpeg' else 'png'
+    if not validate_file_signature(header_bytes, expected_type):
+        os.unlink(path)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File signature does not match its declared type"
+        )
+
+    # SECURITY: Memory-efficient image validation to prevent DoS attacks
+    try:
+        # SECURITY: Validate image content using PIL directly without loading entire file into memory
+        img = Image.open(path)
+
+        # Verify it's actually an image by trying to load it
+        img.verify()
+
+        # Reopen after verify (verify() closes the image)
+        img = Image.open(path)
+
+        # Check image dimensions to prevent DoS
+        if img.width > MAX_IMAGE_DIMENSION or img.height > MAX_IMAGE_DIMENSION:
+            img.close()
+            os.unlink(path)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Image dimensions exceed maximum size of {MAX_IMAGE_DIMENSION}x{MAX_IMAGE_DIMENSION}"
+            )
+
+        # SECURITY: Validate file size without loading into memory
+        file_size = os.path.getsize(path)
+        if file_size < 1024:  # 1KB minimum
+            img.close()
+            os.unlink(path)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File is too small to be a valid image"
+            )
+
+        img.close()
+        log.debug(f"Image validation completed efficiently: {img.width}x{img.height}, {file_size} bytes")
+
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        # Clean up file on validation error
+        if os.path.exists(path):
+            try:
+                os.unlink(path)
+                log.debug(f"Cleaned up invalid image file: {path}")
+            except Exception as cleanup_error:
+                log.warning(f"Failed to clean up invalid file {path}: {cleanup_error}")
+        log.error(f"Image validation error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Image validation failed: {str(e)}"
+        )
+
+    # Get file hash
+    file_hash = hash_obj.hexdigest()
+
+    # Normalize path for static serving
     normalized_path = path.replace("\\", "/")
 
-    # Log successful upload for security monitoring
-    import logging
-    logger = logging.getLogger("riceguard.storage")
+    # Log successful upload
     logger.info(
         f"File uploaded successfully: {safe_original} -> {unique_filename} "
         f"(size: {size_mb:.2f}MB, hash: {file_hash[:16]}...)"

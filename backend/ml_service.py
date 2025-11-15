@@ -31,10 +31,14 @@ def _validate_model_path(path_str: str) -> str:
         if abs_path.suffix.lower() not in allowed_extensions:
             raise ValueError(f"Invalid model file extension: {abs_path.suffix}")
 
-        # Get repo root for validation
+        # SECURITY: Enhanced path validation to prevent symlink attacks and traversal
         repo_root = Path(__file__).parent.parent.resolve()
 
-        # Ensure model is within allowed directories (ml/ or models/)
+        # SECURITY: Validate path components before resolution
+        if '..' in path_str or path_str.startswith('/') or ':' in path_str:
+            raise ValueError(f"Invalid path components in model path: {path_str}")
+
+        # SECURITY: Ensure model is within strictly allowed directories
         allowed_dirs = [
             repo_root / "ml",
             repo_root / "models",
@@ -42,12 +46,44 @@ def _validate_model_path(path_str: str) -> str:
             Path("/app/models"),  # Container models directory
         ]
 
-        is_allowed = any(
-            abs_path.is_relative_to(allowed_dir.resolve()) if hasattr(abs_path, 'is_relative_to')
-            else str(abs_path).startswith(str(allowed_dir.resolve()))
-            for allowed_dir in allowed_dirs
-            if allowed_dir.exists()
-        )
+        # SECURITY: Additional validation - check for symlink attacks
+        try:
+            # Resolve the path and check if it resolves to allowed directory
+            real_path = abs_path.resolve()
+
+            # SECURITY: Multiple validation layers
+            is_allowed = False
+            for allowed_dir in allowed_dirs:
+                allowed_real = allowed_dir.resolve()
+                if hasattr(real_path, 'is_relative_to'):
+                    is_allowed = real_path.is_relative_to(allowed_real)
+                else:
+                    # Fallback for older Python versions
+                    is_allowed = str(real_path).startswith(str(allowed_real))
+
+                if is_allowed:
+                    break
+
+            # SECURITY: Additional check - ensure no symlinks lead outside allowed dirs
+            if is_allowed:
+                # Check each component of the path for symlinks
+                current_path = Path(real_path.root) if hasattr(real_path, 'root') else Path('/')
+                for part in real_path.parts[1:]:  # Skip root
+                    current_path = current_path / part
+                    if current_path.is_symlink():
+                        # Verify symlink target is also within allowed directories
+                        target = current_path.resolve()
+                        if not any(
+                            target.is_relative_to(allowed_dir.resolve()) if hasattr(target, 'is_relative_to')
+                            else str(target).startswith(str(allowed_dir.resolve()))
+                            for allowed_dir in allowed_dirs
+                        ):
+                            is_allowed = False
+                            break
+
+        except (OSError, ValueError) as path_error:
+            log.error(f"Path resolution error during model validation: {path_error}")
+            raise ValueError(f"Invalid model path: {path_str}")
 
         if not is_allowed:
             raise ValueError(f"Model path not in allowed directory: {abs_path}")
@@ -197,11 +233,25 @@ def _repo_root() -> Path:
 
 
 def _default_model_path() -> Path:
-    return (_repo_root() / "ml" / "model.h5").resolve()
+    """Get default model path relative to backend directory."""
+    # For backend execution, look in ml/ subdirectory first, then parent ml/
+    backend_ml = Path(__file__).parent / "ml" / "model.h5"
+    repo_ml = _repo_root() / "ml" / "model.h5"
+
+    if backend_ml.exists():
+        return backend_ml.resolve()
+    return repo_ml.resolve()
 
 
 def _default_labels_path() -> Path:
-    return (_repo_root() / "ml" / "labels.txt").resolve()
+    """Get default labels path relative to backend directory."""
+    # For backend execution, look in ml/ subdirectory first, then parent ml/
+    backend_ml = Path(__file__).parent / "ml" / "labels.txt"
+    repo_ml = _repo_root() / "ml" / "labels.txt"
+
+    if backend_ml.exists():
+        return backend_ml.resolve()
+    return repo_ml.resolve()
 
 
 # ---------------- Labels ---------------- #

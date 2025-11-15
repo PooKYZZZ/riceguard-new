@@ -17,6 +17,9 @@ Thumbs.db
 !README.md
 .claude/
 .claude
+docs/
+SETUP.md
+CLAUDE.md
 
 ###############################################################################
 # Python / FastAPI backend
@@ -63,12 +66,14 @@ yarn-error.log*
 ###############################################################################
 # Mobile / other worktrees
 ###############################################################################
-mobileapp/node_modules/
-mobileapp/android/.gradle/
-mobileapp/android/app/build/
-mobileapp/android/build/
-mobileapp/ios/Pods/
-mobileapp/ios/build/
+mobile/node_modules/
+mobile/android/.gradle/
+mobile/android/app/build/
+mobile/android/build/
+mobile/ios/Pods/
+mobile/ios/build/
+mobile/expo/
+mobile/.expo/
 
 ###############################################################################
 # Machine learning artifacts

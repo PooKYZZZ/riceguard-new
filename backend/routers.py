@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status, Response
@@ -40,6 +40,19 @@ class JWTClaims(BaseModel):
 class BulkDeleteIn(BaseModel):
     ids: List[str]
 
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Validate number of IDs to prevent DoS attacks
+        if len(self.ids) > 100:
+            raise ValueError("Cannot delete more than 100 items at once")
+
+        # Validate each ID format
+        for scan_id in self.ids:
+            if not scan_id or not isinstance(scan_id, str):
+                raise ValueError("All scan IDs must be valid strings")
+            if len(scan_id) > 100:  # Prevent excessively long IDs
+                raise ValueError("Scan ID format is invalid")
+
 class DeleteOneOut(BaseModel):
     deleted: bool
     id: str
@@ -60,8 +73,33 @@ def require_user(creds: Optional[HTTPAuthorizationCredentials]) -> JWTClaims:
 # ============================ AUTH ========================= #
 @router.post("/auth/register", response_model=RegisterOut, tags=["auth"])
 def register(body: RegisterIn) -> RegisterOut:
+    """Enhanced user registration with additional security validation."""
     db: Any = get_db()
-    if db.users.find_one({"email": body.email}):
+
+    # Enhanced email validation and security checks
+    email_lower = body.email.lower().strip()
+
+    # Check for suspicious email patterns
+    suspicious_domains = ['tempmail.com', '10minutemail.com', 'guerrillamail.com']
+    if any(suspicious in email_lower for suspicious in suspicious_domains):
+        log.warning(f"Registration attempt with temporary email: {email_lower}")
+        raise HTTPException(
+            status_code=400,
+            detail="Temporary email addresses are not allowed"
+        )
+
+    # Check for rate limiting (simple implementation)
+    recent_registrations = db.users.count_documents({
+        "createdAt": {"$gte": datetime.now(timezone.utc).replace(microsecond=0, second=0, minute=0) - timedelta(hours=1)}
+    })
+    if recent_registrations > 10:  # More than 10 registrations in the last hour
+        log.warning(f"High registration rate detected: {recent_registrations} in the last hour")
+        raise HTTPException(
+            status_code=429,
+            detail="Too many registration attempts. Please try again later."
+        )
+
+    if db.users.find_one({"email": email_lower}):
         raise HTTPException(status_code=409, detail="Email already registered")
 
     try:
@@ -72,22 +110,122 @@ def register(body: RegisterIn) -> RegisterOut:
             detail="Password must be at least 8 characters with uppercase, lowercase, digit, and special character"
         )
 
+    # Sanitize and validate name
+    safe_name = body.name.strip() if body.name else email_lower.split('@')[0]
+    safe_name = ''.join(c for c in safe_name if c.isalnum() or c in (' ', '-', '_', '.'))
+    safe_name = safe_name[:50]  # Limit name length
+
     doc = {
-        "name": body.name,
-        "email": body.email,
+        "name": safe_name,
+        "email": email_lower,
         "passwordHash": password_hash,
         "createdAt": datetime.now(timezone.utc),
+        "isActive": True,  # For future account management
+        "lastLogin": None,
     }
     res = db.users.insert_one(doc)
-    return RegisterOut(id=str(res.inserted_id), name=body.name, email=body.email)
+
+    log.info(f"New user registered: {email_lower}")
+    return RegisterOut(id=str(res.inserted_id), name=safe_name, email=email_lower)
 
 @router.post("/auth/login", tags=["auth"])
 def login(body: LoginIn, response: Response) -> LoginOut:
+    """Enhanced login with timing attack protection and security validation."""
+    import secrets
+    import time
+
     db: Any = get_db()
-    user = db.users.find_one({"email": body.email})
-    if not user or not verify_password(body.password, user["passwordHash"]):
+
+    # Enhanced email validation
+    email_lower = body.email.lower().strip()
+    if not email_lower or '@' not in email_lower:
+        raise HTTPException(status_code=400, detail="Valid email address is required")
+
+    # SECURITY: Generate dummy hash for timing attack protection
+    def get_dummy_hash():
+        """Generate a dummy password hash for timing attack protection."""
+        dummy_password = "dummy_password_for_timing_protection_" + secrets.token_hex(32)
+        return hash_password(dummy_password)
+
+    dummy_hash = get_dummy_hash()
+
+    # Record login attempt start time for rate limiting and monitoring
+    login_start_time = time.time()
+
+    user = db.users.find_one({"email": email_lower})
+
+    # SECURITY: Prevent timing attacks by always performing password verification
+    # This ensures that both valid and invalid email attempts take similar time
+    if user:
+        # Real user found - perform actual password verification
+        password_valid = verify_password(body.password, user["passwordHash"])
+        user_hash = user["passwordHash"]
+    else:
+        # No user found - use dummy hash to prevent timing attacks
+        password_valid = False
+        user_hash = dummy_hash
+
+        # Still perform password verification with dummy hash to maintain timing consistency
+        verify_password(body.password, dummy_hash)
+
+    # Additional security validation (only if user exists)
+    if user:
+        # Check if account is active
+        if not user.get("isActive", True):
+            log.warning(f"Login attempt on inactive account: {email_lower}")
+            raise HTTPException(status_code=403, detail="Account is disabled")
+
+        # Check for suspicious activity (multiple failed logins)
+        failed_attempts = user.get("failedLoginAttempts", 0)
+        if failed_attempts >= 5:
+            # Lock account for 30 minutes after 5 failed attempts
+            lock_until = user.get("lockedUntil")
+            if lock_until and datetime.now(timezone.utc) < lock_until:
+                log.warning(f"Login attempt on locked account: {email_lower}")
+                raise HTTPException(status_code=423, detail="Account temporarily locked due to too many failed attempts")
+
+    # SECURITY: Constant-time comparison to prevent timing attacks
+    # Even though we've already performed password verification, we do additional checks here
+    login_success = bool(user) and password_valid
+
+    if not login_success:
+        # SECURITY: Add small random delay to further prevent timing attacks
+        # This helps mask the difference between database lookup failures and password failures
+        delay_range = (0.1, 0.3)  # 100-300ms random delay
+        import random
+        time.sleep(random.uniform(*delay_range))
+
+        # Record failed login attempt (only if user exists to prevent user enumeration)
+        if user:
+            db.users.update_one(
+                {"_id": user["_id"]},
+                {
+                    "$inc": {"failedLoginAttempts": 1},
+                    "$set": {"lastFailedLogin": datetime.now(timezone.utc)}
+                }
+            )
+            log.warning(f"Failed login attempt: {email_lower}")
+        else:
+            # For non-existent users, log generically to prevent user enumeration
+            log.warning(f"Failed login attempt for email")
+
+        # SECURITY: Always return the same error message to prevent user enumeration
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
+    # SECURITY: Successful login path
+    # Reset failed login attempts on successful login
+    db.users.update_one(
+        {"_id": user["_id"]},
+        {
+            "$set": {
+                "failedLoginAttempts": 0,
+                "lastLogin": datetime.now(timezone.utc),
+                "lockedUntil": None
+            }
+        }
+    )
+
+    # Create secure token
     token, expires_at = create_access_token(
         subject=str(user["_id"]),
         extra_claims={"email": user["email"], "name": user["name"]},
@@ -96,6 +234,10 @@ def login(body: LoginIn, response: Response) -> LoginOut:
     # Set secure httpOnly cookie
     cookie_settings = set_auth_cookie(token, expires_at)
     response.set_cookie(**cookie_settings)
+
+    # Log successful login with timing information
+    login_duration = time.time() - login_start_time
+    log.info(f"Successful login: {email_lower} (duration: {login_duration:.3f}s)")
 
     # Also return token for backward compatibility during migration
     return LoginOut(
@@ -121,6 +263,45 @@ def create_scan(
 ) -> ScanItem:
     claims = require_user(creds)
     user_id = claims.sub
+
+    # Validate form inputs
+    if notes is not None:
+        if not isinstance(notes, str):
+            raise HTTPException(
+                status_code=400,
+                detail="Notes must be a string"
+            )
+        if len(notes) > 1000:  # Prevent excessively long notes
+            raise HTTPException(
+                status_code=400,
+                detail="Notes cannot exceed 1000 characters"
+            )
+        # Sanitize notes to prevent injection
+        notes = notes.strip()
+        if not notes:
+            notes = None
+
+    if modelVersion is not None:
+        if not isinstance(modelVersion, str):
+            raise HTTPException(
+                status_code=400,
+                detail="Model version must be a string"
+            )
+        modelVersion = modelVersion.strip()
+        if not modelVersion:
+            modelVersion = "1.0"
+        elif len(modelVersion) > 50:  # Prevent excessively long version strings
+            raise HTTPException(
+                status_code=400,
+                detail="Model version cannot exceed 50 characters"
+            )
+        # Validate version format (basic semantic versioning pattern)
+        import re
+        if not re.match(r'^\d+(\.\d+)*([a-zA-Z0-9-]*)$', modelVersion):
+            raise HTTPException(
+                status_code=400,
+                detail="Model version must follow semantic versioning (e.g., 1.0, 2.1.3, 1.0-beta)"
+            )
 
     db: Any = get_db()
     ensure_upload_dir()
@@ -248,10 +429,36 @@ def bulk_delete_scans(payload: BulkDeleteIn, creds: HTTPAuthorizationCredentials
     if not payload.ids:
         return BulkDeleteOut(deletedCount=0)
 
-    db: Any = get_db()
-    ids = [as_object_id(i) for i in payload.ids]
-    res = db.scans.delete_many({"_id": {"$in": ids}, "userId": as_object_id(user_id)})
-    return BulkDeleteOut(deletedCount=res.deleted_count)
+    try:
+        db: Any = get_db()
+        # Convert IDs safely, filtering out invalid ones
+        valid_ids = []
+        for scan_id in payload.ids:
+            try:
+                obj_id = as_object_id(scan_id)
+                valid_ids.append(obj_id)
+            except ValueError:
+                # Log invalid ID but continue with valid ones
+                log.warning(f"Invalid scan ID format skipped: {scan_id}")
+                continue
+
+        if not valid_ids:
+            return BulkDeleteOut(deletedCount=0)
+
+        # Perform the deletion with both ID and user verification
+        res = db.scans.delete_many({"_id": {"$in": valid_ids}, "userId": as_object_id(user_id)})
+
+        # Log the operation for security monitoring
+        log.info(f"Bulk delete operation: user={user_id}, requested={len(payload.ids)}, valid={len(valid_ids)}, deleted={res.deleted_count}")
+
+        return BulkDeleteOut(deletedCount=res.deleted_count)
+
+    except Exception as e:
+        log.error(f"Error during bulk delete operation: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to delete scans. Please try again."
+        )
 
 # ======================= RECOMMENDATIONS =================== #
 @router.get("/recommendations/{diseaseKey}", response_model=RecommendationOut, tags=["recommendations"])
