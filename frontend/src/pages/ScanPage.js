@@ -85,14 +85,23 @@ function ScanPage() {
           "";
       }
 
+      // Use the actual calibrated confidence from backend
+      let rawConfidence = typeof data.confidence === "number"
+        ? (data.confidence * 100).toFixed(1)
+        : data.confidence;
+
+      let displayConfidence = rawConfidence;  // No artificial caps
+      let needsCalibrationNotice = parseFloat(rawConfidence) > 90;
+
       const newResult = {
         disease: diseaseKeyRaw,
-        confidence:
-          typeof data.confidence === "number"
-            ? (data.confidence * 100).toFixed(1)
-            : data.confidence,
+        confidence: displayConfidence,
+        rawConfidence: rawConfidence,
+        needsCalibrationNotice,
         recommendation: recText || "No recommendation available.",
         timestamp: data.createdAt,
+        top3: data.top3 || null, // Top-3 predictions if available
+        alternatives: data.alternatives || [], // Similar diseases that might be confused
       };
 
       setResult(newResult);
@@ -179,8 +188,55 @@ function ScanPage() {
                 <strong>Disease:</strong> {result.disease}
               </p>
               <p>
-                <strong>Confidence:</strong> {result.confidence}%
+                <strong>Confidence:</strong>{" "}
+                <span className={`confidence-badge ${result.disease === 'uncertain' ? 'uncertain' : result.confidence > 70 ? 'high' : result.confidence > 50 ? 'medium' : 'low'}`}>
+                  {result.confidence}%
+                </span>
+                {result.needsCalibrationNotice && (
+                  <span className="calibration-notice" title={`Very high confidence detected: ${result.rawConfidence}%`}>
+                    <small> (very high confidence)</small>
+                  </span>
+                )}
               </p>
+
+              {/* Disease Similarity Warning */}
+              {result.alternatives && result.alternatives.length > 0 && (
+                <div className="similar-diseases-warning">
+                  <p>⚠️ This disease can be confused with: {result.alternatives.map(alt =>
+                    alt.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                  ).join(', ')}. Consider consulting an expert for confirmation.</p>
+                </div>
+              )}
+
+              {/* Top-3 Predictions */}
+              {result.top3 && result.top3.length > 0 && (
+                <div className="top3-predictions">
+                  <h4>Top Predictions:</h4>
+                  {result.top3.map((pred, index) => (
+                    <div key={index} className={`prediction-rank prediction-${index + 1}`}>
+                      <span className="rank">#{index + 1}</span>
+                      <span className="label">{pred.label.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                      <span className="confidence">{(pred.confidence * 100).toFixed(1)}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {result.disease === 'uncertain' && (
+                <div className="uncertainty-notice">
+                  <p>⚠️ Low confidence detected. Try using a clearer, better-lit image focused on the affected area.</p>
+                  <div className="improvement-tips">
+                    <strong>Tips for better results:</strong>
+                    <ul>
+                      <li>Use bright, even lighting</li>
+                      <li>Focus on the affected area</li>
+                      <li>Include single leaf per image</li>
+                      <li>Avoid shadows and glare</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+
               <p>
                 <strong>Recommendation:</strong> {result.recommendation}
               </p>

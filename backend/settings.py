@@ -24,7 +24,23 @@ _default_origins = [
     "http://localhost:19006",
 ]
 
-ALLOWED_ORIGINS: List[str] = [o.strip() for o in os.getenv(
-    "ALLOWED_ORIGINS",
-    ",".join(_default_origins)
-).split(",") if o.strip()]
+# Parse and validate allowed origins
+_allowed_origins_raw = os.getenv("ALLOWED_ORIGINS", ",".join(_default_origins))
+ALLOWED_ORIGINS: List[str] = []
+
+for origin in _allowed_origins_raw.split(","):
+    origin = origin.strip()
+    if not origin or origin == "*" or origin.startswith("file://"):
+        continue  # Skip invalid or overly permissive origins
+
+    # Validate origin format
+    if origin.startswith(("http://", "https://")):
+        ALLOWED_ORIGINS.append(origin)
+    else:
+        # Log warning for invalid origin but skip it
+        import logging
+        logging.getLogger("riceguard.settings").warning(f"Skipping invalid origin: {origin}")
+
+# Fallback to safe defaults if no valid origins
+if not ALLOWED_ORIGINS:
+    ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]

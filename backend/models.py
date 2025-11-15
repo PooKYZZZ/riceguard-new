@@ -37,7 +37,7 @@ class DiseaseKey(str, Enum):
             alias = DISEASE_KEY_ALIASES.get(normalized)
             if alias:
                 return cls(alias)
-            raise
+            raise ValueError(f"Unknown disease key: {normalized}")
 
 
 class RegisterIn(BaseModel):
@@ -94,6 +94,19 @@ class ScanItem(BaseModel):
 
 class ScanListOut(BaseModel):
     items: List[ScanItem] = Field(default_factory=list)
+    total: int
+    page: int
+    pageSize: int
+    hasNext: bool
+    hasPrev: bool
+
+
+class ScanListQuery(BaseModel):
+    """Query parameters for paginated scan listing."""
+    page: int = Field(default=1, ge=1, description="Page number (1-based)")
+    pageSize: int = Field(default=20, ge=1, le=100, description="Items per page (max 100)")
+    sortBy: str = Field(default="createdAt", description="Field to sort by")
+    sortOrder: str = Field(default="desc", regex="^(asc|desc)$", description="Sort order")
 
 
 class RecommendationOut(BaseModel):

@@ -28,4 +28,13 @@ def ensure_indexes():
     db.scans.create_index([("userId", ASCENDING), ("createdAt", DESCENDING)], name="user_createdAt")
 
 def as_object_id(id_str: str) -> ObjectId:
-    return ObjectId(id_str)
+    try:
+        return ObjectId(id_str)
+    except Exception:
+        raise ValueError("Invalid ObjectId format")
+
+def close_client():
+    global _client
+    if _client is not None:
+        _client.close()
+        _client = None

@@ -5,12 +5,48 @@ from jose import jwt, JWTError
 from passlib.context import CryptContext
 from settings import JWT_SECRET, JWT_ALGORITHM, TOKEN_EXPIRE_HOURS
 
-# Use bcrypt_sha256 to avoid 72-byte password issues
-pwd_context = CryptContext(schemes=["bcrypt_sha256"], deprecated="auto")
+# Use bcrypt with proper configuration for maximum security
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__rounds=12  # Increased rounds for better security
+)
+
+# -------------------- PASSWORD VALIDATION --------------------
+def validate_password_strength(password: str) -> bool:
+    """
+    Validate password strength according to security best practices.
+    Returns True if password meets requirements.
+    """
+    import re
+
+    # Minimum 8 characters
+    if len(password) < 8:
+        return False
+
+    # At least one lowercase letter
+    if not re.search(r'[a-z]', password):
+        return False
+
+    # At least one uppercase letter
+    if not re.search(r'[A-Z]', password):
+        return False
+
+    # At least one digit
+    if not re.search(r'\d', password):
+        return False
+
+    # At least one special character
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+        return False
+
+    return True
 
 # -------------------- PASSWORD UTILS --------------------
 def hash_password(password: str) -> str:
     """Hash a plaintext password securely."""
+    if not validate_password_strength(password):
+        raise ValueError("Password does not meet security requirements")
     return pwd_context.hash(password)
 
 def verify_password(plain: str, hashed: str) -> bool:
@@ -40,6 +76,46 @@ def create_access_token(
 
     token = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return token, expire
+
+
+def set_auth_cookie(token: str, expires_at: datetime) -> Dict[str, str]:
+    """
+    Create secure httpOnly cookie settings for JWT token.
+    """
+    from fastapi import Response
+    import os
+
+    # Determine secure flag based on environment
+    is_secure = os.getenv("ENVIRONMENT", "development") == "production"
+
+    return {
+        "key": "access_token",
+        "value": token,
+        "max_age": int((expires_at - datetime.now(timezone.utc)).total_seconds()),
+        "expires": expires_at,
+        "path": "/",
+        "domain": None,  # Will use current domain
+        "secure": is_secure,
+        "httponly": True,  # Prevents XSS access
+        "samesite": "lax",  # CSRF protection
+    }
+
+
+def clear_auth_cookie() -> Dict[str, str]:
+    """
+    Create settings to clear the auth cookie.
+    """
+    return {
+        "key": "access_token",
+        "value": "",
+        "max_age": 0,
+        "expires": 0,
+        "path": "/",
+        "domain": None,
+        "secure": True,
+        "httponly": True,
+        "samesite": "lax",
+    }
 
 
 def decode_token(token: str) -> Dict[str, Any]:
