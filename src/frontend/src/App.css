@@ -1,0 +1,324 @@
+/* RiceGuard - Enhanced UI/UX Design */
+/* Prevent page scroll and set full height */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overflow-x: hidden;
+}
+/* App wrapper */
+.App {
+  position: relative;
+  color: white;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+/* Fixed background image */
+.bg-image {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover; 
+  z-index: -1;
+}
+/* Center content in viewport */
+.content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1rem;
+  user-select: none;
+}
+/* Prevent unwanted text selection */
+.content .logo,
+.content .tagline,
+.modal h2,
+.modal .label-text {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+.modal h2,
+.modal .label-text {
+  caret-color: transparent;
+}
+/* Allow text input selection */
+.content input,
+.modal input,
+.content button,
+.modal button {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+/* Logo */
+.logo {
+  width: 400px;
+  max-width: 30vw;
+  height: auto;
+  border-radius: 12px;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
+}
+/* Tagline - more refined */
+.tagline {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  font-size: clamp(1rem, 2.5vw, 1.25rem);
+  font-family: var(--app-font);
+  margin: 0.5rem 0 1rem 0;
+  letter-spacing: 0.3px;
+  font-weight: 400;
+  max-width: 90vw;
+}
+/* Global font */
+:root {
+  --app-font: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --primary-green: #059669;
+  --primary-green-hover: #047857;
+  --primary-green-light: #10b981;
+  --text-dark: #1f2937;
+  --text-medium: #4b5563;
+  --border-light: #e5e7eb;
+}
+body, .App {
+  font-family: var(--app-font);
+  background: transparent;
+}
+/* Actions (Login / Sign Up buttons) - refined */
+.actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  align-items: center;
+  justify-content: center;
+}
+/* Modal backdrop with blur effect */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  animation: fadeIn 0.2s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+/* Modal box - enhanced design */
+.modal {
+  background: #ffffff;
+  color: var(--text-dark);
+  padding: 2.5rem 2rem 2rem 2rem;
+  border-radius: 16px;
+  width: min(440px, 90%);
+  position: relative;
+  user-select: none;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease-out;
+}
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* Avatar in modal - better styling */
+.modal-avatar-wrap {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.modal-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 5px solid white;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+}
+/* Modal title - softer appearance */
+.modal h2 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.5rem;
+  color: var(--text-dark);
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: -0.5px;
+}
+/* Field wrapper */
+.modal .field {
+  margin-bottom: 0.25rem;
+}
+/* Label styling - refined */
+.modal .label-text {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-medium);
+  letter-spacing: 0.3px;
+}
+/* Modal form layout */
+.modal form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+/* Input fields - modern design */
+.modal input {
+  padding: 0.875rem 1rem;
+  border-radius: 10px;
+  background: #f9fafb;
+  color: var(--text-dark);
+  border: 2px solid var(--border-light);
+  transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 0.95rem;
+  font-family: var(--app-font);
+}
+.modal input:hover {
+  border-color: #d1d5db;
+  background: #ffffff;
+}
+.modal input:focus {
+  outline: none;
+  border-color: var(--primary-green);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+}
+.modal input::placeholder {
+  color: #9ca3af;
+}
+/* Modal actions (buttons inside modal) */
+.modal .modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+}
+/* Error message styling */
+.signup-error {
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  border-left: 3px solid #dc2626;
+  margin-top: -0.25rem;
+}
+/* Button overrides for modal - softer look */
+.modal .btn-outline {
+  background: transparent !important;
+  color: var(--text-medium) !important;
+  border: 2px solid var(--border-light) !important;
+  box-shadow: none !important;
+  font-weight: 500 !important;
+}
+.modal .btn-outline:hover {
+  background: #f9fafb !important;
+  border-color: #d1d5db !important;
+  color: var(--text-dark) !important;
+}
+.modal .btn-primary {
+  background: linear-gradient(135deg, var(--primary-green) 0%, var(--primary-green-light) 100%) !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25) !important;
+  font-weight: 600 !important;
+}
+.modal .btn-primary:hover {
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.35) !important;
+  transform: translateY(-1px) !important;
+}
+.modal .btn-primary:active {
+  transform: translateY(0) !important;
+}
+/* Landing page button styles */
+.actions .btn-primary {
+  background: linear-gradient(135deg, #ffffff 0%, #f3f4f6 100%) !important;
+  color: var(--primary-green) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+  border: 2px solid rgba(255, 255, 255, 0.9) !important;
+  font-weight: 700 !important;
+  padding: 0.875rem 2rem !important;
+}
+.actions .btn-primary:hover {
+  background: #ffffff !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3) !important;
+  transform: translateY(-2px) !important;
+}
+.actions .btn-outline {
+  color: white !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-weight: 600 !important;
+  padding: 0.875rem 2rem !important;
+}
+.actions .btn-outline:hover {
+  background: rgba(255, 255, 255, 0.25) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2) !important;
+  transform: translateY(-2px) !important;
+}
+/* Input text behavior */
+.modal input,
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+  user-select: text;
+  caret-color: var(--primary-green);
+}
+.modal button {
+  user-select: none;
+}
+.modal .label-text {
+  pointer-events: none;
+}
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .modal {
+    padding: 2rem 1.5rem 1.5rem 1.5rem;
+  }
+  
+  .modal h2 {
+    font-size: 1.25rem;
+  }
+  
+  .actions .btn-primary,
+  .actions .btn-outline {
+    padding: 0.75rem 1.5rem !important;
+    font-size: 0.95rem !important;
+  }
+}

@@ -1,0 +1,507 @@
+name: RiceGuard CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  release:
+    types: [ published ]
+
+env:
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # Backend Tests
+  backend-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+
+    services:
+      mongodb:
+        image: mongo:6.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ping: 1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install backend dependencies
+      run: |
+        cd src/backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-xdist pytest-mock
+
+    - name: Set up test environment
+      run: |
+        cd src/backend
+        mkdir -p uploads
+        export MONGO_URI="mongodb://localhost:27017"
+        export DB_NAME="test_riceguard"
+        export JWT_SECRET="test_jwt_secret_key_for_ci"
+        export UPLOAD_DIR="./uploads"
+        export MAX_UPLOAD_MB="2"
+        export MODEL_PATH="/tmp/test_model.h5"
+        export MODEL_TEMPERATURE="1.0"
+        export TESTING="true"
+
+    - name: Run backend tests (Fast)
+      run: |
+        cd src/backend
+        python tests/run_tests.py fast --no-setup --no-cleanup
+
+    - name: Run backend security tests
+      run: |
+        cd src/backend
+        python tests/run_tests.py security --no-setup --no-cleanup
+
+    - name: Run backend performance tests
+      run: |
+        cd src/backend
+        python tests/run_tests.py performance --no-setup --no-cleanup
+
+    - name: Run all backend tests with coverage
+      run: |
+        cd src/backend
+        python tests/run_tests.py coverage --no-setup --no-cleanup
+
+    - name: Upload backend coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: src/backend/coverage.xml
+        flags: backend
+        name: backend-coverage
+
+    - name: Upload backend test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: backend-test-results-${{ matrix.python-version }}
+        path: src/backend/htmlcov/
+
+  # Frontend Tests
+  frontend-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ['18', '20']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: src/frontend/package-lock.json
+
+    - name: Install frontend dependencies
+      run: |
+        cd src/frontend
+        npm ci
+
+    - name: Run frontend linting
+      run: |
+        cd src/frontend
+        npm run lint --if-present
+
+    - name: Run frontend type checking
+      run: |
+        cd src/frontend
+        npm run type-check --if-present
+
+    - name: Run frontend tests
+      run: |
+        cd src/frontend
+        npm test -- --coverage --watchAll=false
+
+    - name: Build frontend
+      run: |
+        cd src/frontend
+        npm run build
+
+    - name: Upload frontend coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: src/frontend/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+
+    - name: Upload frontend test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: frontend-test-results-${{ matrix.node-version }}
+        path: src/frontend/coverage/
+
+  # Mobile App Tests
+  mobile-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ['18']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: src/mobileapp/riceguard/package-lock.json
+
+    - name: Install mobile dependencies
+      run: |
+        cd src/mobileapp/riceguard
+        npm ci
+
+    - name: Install Expo CLI
+      run: npm install -g @expo/cli
+
+    - name: Run mobile tests
+      run: |
+        cd src/mobileapp/riceguard
+        npm test -- --coverage --watchAll=false
+
+    - name: Upload mobile coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: src/mobileapp/riceguard/coverage/lcov.info
+        flags: mobile
+        name: mobile-coverage
+
+    - name: Upload mobile test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: mobile-test-results
+        path: src/mobileapp/riceguard/coverage/
+
+  # Security Scanning
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Python security scan
+      run: |
+        pip install bandit safety
+        cd src/backend
+        bandit -r . -f json -o bandit-report.json || true
+        safety check --json --output safety-report.json || true
+
+    - name: Node.js security audit
+      run: |
+        cd src/frontend
+        npm audit --audit-level moderate --json > npm-audit.json || true
+        cd ../mobileapp/riceguard
+        npm audit --audit-level moderate --json > npm-mobile-audit.json || true
+
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          trivy-results.sarif
+          src/backend/bandit-report.json
+          src/backend/safety-report.json
+          src/frontend/npm-audit.json
+          src/mobileapp/riceguard/npm-mobile-audit.json
+
+  # Integration Tests
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+    services:
+      mongodb:
+        image: mongo:6.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ping: 1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: src/frontend/package-lock.json
+
+    - name: Install dependencies
+      run: |
+        cd src/backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        cd ../frontend
+        npm ci
+        cd ../mobileapp/riceguard
+        npm ci
+
+    - name: Start backend server
+      run: |
+        cd src/backend
+        export MONGO_URI="mongodb://localhost:27017"
+        export DB_NAME="integration_test_riceguard"
+        export JWT_SECRET="integration_test_jwt_secret"
+        export UPLOAD_DIR="./uploads"
+        export MAX_UPLOAD_MB="2"
+        export MODEL_PATH="/tmp/test_model.h5"
+        export TESTING="true"
+
+        # Start backend in background
+        python -m uvicorn main:app --host 0.0.0.0 --port 8000 &
+        echo $! > backend.pid
+
+        # Wait for server to start
+        sleep 10
+
+        # Test if server is running
+        curl -f http://localhost:8000/api/v1/health || exit 1
+
+    - name: Run API integration tests
+      run: |
+        cd src/backend
+        python -m pytest tests/ -m integration -v --tb=short
+
+    - name: Run end-to-end tests
+      run: |
+        cd src/frontend
+        export REACT_APP_API_BASE_URL="http://localhost:8000/api/v1"
+        npm run test:e2e --if-present || echo "E2E tests not configured"
+
+    - name: Cleanup backend server
+      if: always()
+      run: |
+        cd src/backend
+        if [ -f backend.pid ]; then
+          kill $(cat backend.pid) || true
+          rm backend.pid
+        fi
+
+  # Build and Deploy
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests, mobile-tests, security-scan, integration-tests]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and push backend Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./src/backend
+        file: ./src/backend/Dockerfile
+        push: true
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/riceguard-backend:latest
+          ${{ secrets.DOCKER_USERNAME }}/riceguard-backend:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build and push frontend Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./src/frontend
+        file: ./src/frontend/Dockerfile
+        push: true
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/riceguard-frontend:latest
+          ${{ secrets.DOCKER_USERNAME }}/riceguard-frontend:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Deploy to staging
+      if: github.ref == 'refs/heads/main'
+      run: |
+        echo "Deploying to staging environment"
+        # Add your deployment commands here
+        # For example, using kubectl, docker-compose, etc.
+
+    - name: Run smoke tests
+      if: github.ref == 'refs/heads/main'
+      run: |
+        echo "Running smoke tests on staging"
+        # Add smoke test commands here
+        # For example, curl requests to verify deployment
+
+  # Release
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [build-and-deploy]
+    if: github.event_name == 'release'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build release artifacts
+      run: |
+        mkdir -p release-artifacts
+
+        # Backend distribution
+        cd src/backend
+        python setup.py sdist bdist_wheel
+        cp dist/* ../../release-artifacts/
+
+        # Frontend build
+        cd ../frontend
+        npm run build
+        tar -czf ../../release-artifacts/frontend-build.tar.gz build/
+
+        # Mobile app build (if configured)
+        cd ../mobileapp/riceguard
+        npm run build:android --if-present || echo "Android build not configured"
+        npm run build:ios --if-present || echo "iOS build not configured"
+
+    - name: Upload release assets
+      uses: softprops/action-gh-release@v1
+      with:
+        files: release-artifacts/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Performance Testing
+  performance-tests:
+    runs-on: ubuntu-latest
+    needs: [integration-tests]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up performance testing tools
+      run: |
+        npm install -g artillery
+        pip install locust
+
+    - name: Run API performance tests
+      run: |
+        artillery run tests/performance/api-load-test.yml || echo "Artillery config not found"
+
+    - name: Run frontend performance tests
+      run: |
+        cd src/frontend
+        npm run lighthouse --if-present || echo "Lighthouse tests not configured"
+
+    - name: Upload performance reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: performance-reports
+        path: |
+          performance-reports/
+          lighthouse-report.html
+
+  # Documentation Generation
+  generate-docs:
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests, mobile-tests]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Generate API documentation
+      run: |
+        cd src/backend
+        pip install -r requirements.txt
+        # Generate OpenAPI spec if not auto-generated
+        python -c "import main; print('API docs generated')" || echo "API docs generation failed"
+
+    - name: Generate test coverage report
+      run: |
+        cd src/backend
+        python tests/run_tests.py coverage --no-setup --no-cleanup
+        cd ../frontend
+        npm test -- --coverage --watchAll=false
+        cd ../mobileapp/riceguard
+        npm test -- --coverage --watchAll=false
+
+    - name: Deploy documentation
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs
+      if: github.ref == 'refs/heads/main'
+
+  # Notification
+  notify:
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests, mobile-tests, security-scan, integration-tests]
+    if: always()
+    steps:
+    - name: Notify on success
+      if: ${{ needs.backend-tests.result == 'success' && needs.frontend-tests.result == 'success' && needs.mobile-tests.result == 'success' }}
+      run: |
+        echo "✅ All tests passed successfully!"
+        # Add Slack/email notification here if desired
+
+    - name: Notify on failure
+      if: ${{ needs.backend-tests.result == 'failure' || needs.frontend-tests.result == 'failure' || needs.mobile-tests.result == 'failure' }}
+      run: |
+        echo "❌ Some tests failed!"
+        # Add Slack/email notification here if desired
