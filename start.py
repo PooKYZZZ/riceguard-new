@@ -16,9 +16,10 @@ from pathlib import Path
 
 # Configuration
 REPO_ROOT = Path(__file__).resolve().parent
-BACKEND_DIR = REPO_ROOT / "backend"
-FRONTEND_DIR = REPO_ROOT / "frontend"
-MOBILE_DIR = REPO_ROOT / "mobileapp" / "riceguard"
+SRC_DIR = REPO_ROOT / "src"
+BACKEND_DIR = SRC_DIR / "backend"
+FRONTEND_DIR = SRC_DIR / "frontend"
+MOBILE_DIR = SRC_DIR / "mobileapp" / "riceguard"
 
 class Colors:
     def __init__(self):
@@ -182,7 +183,11 @@ class ServiceManager:
         """Start the React frontend development server"""
         print_status("Starting React frontend server...")
 
-        cmd = ["npm", "start"]
+        # Use npm.cmd on Windows
+        if platform.system() == 'Windows':
+            cmd = ["npm.cmd", "start"]
+        else:
+            cmd = ["npm", "start"]
 
         # Set environment variables
         env = os.environ.copy()

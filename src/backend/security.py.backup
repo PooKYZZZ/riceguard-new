@@ -1,0 +1,112 @@
+# backend/security.py
+from datetime import datetime, timedelta, timezone
+from typing import Optional, Dict, Any, Tuple
+from jose import jwt, JWTError
+from passlib.context import CryptContext
+from settings import JWT_SECRET, JWT_ALGORITHM, TOKEN_EXPIRE_HOURS
+
+# Use bcrypt with proper configuration for maximum security
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__rounds=12  # Increased rounds for better security
+)
+
+# -------------------- PASSWORD VALIDATION --------------------
+def validate_password_strength(password: str) -> bool:
+    """
+    Validate password strength (simplified for educational purposes).
+    Returns True if password meets requirements.
+    
+    SCHOOL PROJECT NOTE: Simplified to minimum 6 characters only.
+    For production use, enforce stronger requirements (uppercase, lowercase, digit, special char).
+    """
+    # Minimum 6 characters (simplified for school project)
+    if len(password) < 6:
+        return False
+
+    return True
+
+# -------------------- PASSWORD UTILS --------------------
+def hash_password(password: str) -> str:
+    """Hash a plaintext password securely."""
+    if not validate_password_strength(password):
+        raise ValueError("Password does not meet security requirements")
+    return pwd_context.hash(password)
+
+def verify_password(plain: str, hashed: str) -> bool:
+    """Verify a plaintext password against its hash."""
+    return pwd_context.verify(plain, hashed)
+
+# -------------------- TOKEN UTILS --------------------
+def create_access_token(
+    subject: str,
+    extra_claims: Optional[Dict[str, Any]] = None,
+) -> Tuple[str, datetime]:
+    """
+    Create a JWT access token.
+    - subject: user ID (stored as 'sub')
+    - extra_claims: optional dict with email, name, etc.
+    Returns: (token, expires_at)
+    """
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(hours=TOKEN_EXPIRE_HOURS)
+    to_encode = {
+        "sub": subject,
+        "iat": int(now.timestamp()),
+        "exp": int(expire.timestamp()),
+    }
+    if extra_claims:
+        to_encode.update(extra_claims)
+
+    token = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    return token, expire
+
+
+def set_auth_cookie(token: str, expires_at: datetime) -> Dict[str, str]:
+    """
+    Create secure httpOnly cookie settings for JWT token.
+    """
+    from fastapi import Response
+    import os
+
+    # Determine secure flag based on environment
+    is_secure = os.getenv("ENVIRONMENT", "development") == "production"
+
+    return {
+        "key": "access_token",
+        "value": token,
+        "max_age": int((expires_at - datetime.now(timezone.utc)).total_seconds()),
+        "expires": expires_at,
+        "path": "/",
+        "domain": None,  # Will use current domain
+        "secure": is_secure,
+        "httponly": True,  # Prevents XSS access
+        "samesite": "lax",  # CSRF protection
+    }
+
+
+def clear_auth_cookie() -> Dict[str, str]:
+    """
+    Create settings to clear the auth cookie.
+    """
+    return {
+        "key": "access_token",
+        "value": "",
+        "max_age": 0,
+        "expires": 0,
+        "path": "/",
+        "domain": None,
+        "secure": True,
+        "httponly": True,
+        "samesite": "lax",
+    }
+
+
+def decode_token(token: str) -> Dict[str, Any]:
+    """Decode and validate a JWT token."""
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return payload
+    except JWTError as e:
+        raise ValueError(f"Invalid token: {e}")

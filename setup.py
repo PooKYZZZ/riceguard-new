@@ -13,15 +13,17 @@ import platform
 import json
 import shutil
 import secrets
+import argparse
 from pathlib import Path
 from urllib.parse import urlparse
 
 # Configuration
 REPO_ROOT = Path(__file__).resolve().parent
-BACKEND_DIR = REPO_ROOT / "backend"
-FRONTEND_DIR = REPO_ROOT / "frontend"
-SCRIPTS_DIR = REPO_ROOT / "scripts"
-ML_DIR = REPO_ROOT / "ml"
+SRC_DIR = REPO_ROOT / "src"
+BACKEND_DIR = SRC_DIR / "backend"
+FRONTEND_DIR = SRC_DIR / "frontend"
+SCRIPTS_DIR = SRC_DIR / "scripts"
+ML_DIR = SRC_DIR / "ml"
 
 class Colors:
     """Cross-platform color support with Windows compatibility"""
@@ -166,9 +168,9 @@ def check_project_structure():
 
     required_dirs = [BACKEND_DIR, FRONTEND_DIR]
     required_files = [
-        "backend/main.py",
-        "backend/requirements.txt",
-        "frontend/package.json"
+        "src/backend/main.py",
+        "src/backend/requirements.txt",
+        "src/frontend/package.json"
     ]
 
     # Check directories
@@ -568,7 +570,8 @@ def create_development_tools():
     created = []
 
     # Create verify-setup.py if missing
-    verify_script = REPO_ROOT / "tools" / "verify-setup.py"
+    tools_dir = REPO_ROOT / "src" / "tools"
+    verify_script = tools_dir / "verify-setup.py"
     if not verify_script.exists():
         verify_content = '''#!/usr/bin/env python3
 """Verify RiceGuard setup and configuration"""
@@ -617,9 +620,10 @@ def safe_print(*args, **kwargs):
 
 colors = Colors()
 
-REPO_ROOT = Path(__file__).resolve().parent
-BACKEND_DIR = REPO_ROOT / "backend"
-FRONTEND_DIR = REPO_ROOT / "frontend"
+REPO_ROOT = Path(__file__).resolve().parent.parent
+SRC_DIR = REPO_ROOT / "src"
+BACKEND_DIR = SRC_DIR / "backend"
+FRONTEND_DIR = SRC_DIR / "frontend"
 
 def verify_setup():
     try:
@@ -767,7 +771,7 @@ def provide_next_steps():
 
     print("\n[INFO] Required Next Steps (do these now):")
     print("   1. Configure environment files:")
-    print("      -> Edit backend/.env with your MongoDB Atlas credentials:")
+    print("      -> Edit src/backend/.env with your MongoDB Atlas credentials:")
     print("         * Get free cluster: https://www.mongodb.com/cloud/atlas")
     print("         * Replace <username>, <password>, <cluster> placeholders")
     print("         * Generate JWT secret: openssl rand -hex 32")
@@ -783,10 +787,10 @@ def provide_next_steps():
     print("   * Health Check:     http://127.0.0.1:8000/health")
 
     print("\n[INFO] Helpful Commands:")
-    print("   * Verify setup:     python tools/verify-setup.py")
+    print("   * Verify setup:     python src/tools/verify-setup.py")
     print("   * Re-run setup:     python setup.py")
     print("   * Mobile app:       python start.py (includes mobile)")
-    print("   * Clean restart:    Delete backend/.venv and frontend/node_modules")
+    print("   * Clean restart:    Delete src/backend/.venv and src/frontend/node_modules")
 
     print("\n[INFO] Pro Tips:")
     print("   * Use Ctrl+C to stop development servers")
@@ -796,8 +800,68 @@ def provide_next_steps():
 
     print("\n" + "="*70)
 
+def show_help():
+    """Show help information"""
+    print_header("RiceGuard Automated Setup Script")
+    print("=" * 60)
+    print("USAGE:")
+    print("    python setup.py [OPTIONS]")
+    print()
+    print("OPTIONS:")
+    print("    --help, -h    Show this help message and exit")
+    print()
+    print("DESCRIPTION:")
+    print("    Automatically sets up the RiceGuard development environment including:")
+    print("    * System requirements verification (Python 3.8+, Node.js, npm)")
+    print("    * Project structure validation")
+    print("    * Environment template creation (.env.example files)")
+    print("    * Python virtual environment setup with dependencies")
+    print("    * Node.js dependencies installation")
+    print("    * Environment configuration file creation")
+    print("    * Development tools creation")
+    print("    * Safety checks")
+    print()
+    print("PROJECT STRUCTURE:")
+    print("    riceguard/")
+    print("    |-- setup.py           # This script")
+    print("    |-- start.py           # Start development servers")
+    print("    +-- src/")
+    print("        |-- backend/        # FastAPI backend")
+    print("        |-- frontend/       # React frontend")
+    print("        |-- mobileapp/      # React Native mobile app")
+    print("        |-- ml/            # ML model and calibration")
+    print("        |-- scripts/       # Utility scripts")
+    print("        +-- tools/         # Development tools")
+    print()
+    print("EXAMPLES:")
+    print("    python setup.py              # Run full setup")
+    print("    python setup.py --help       # Show this help")
+    print()
+    print("NOTE:")
+    print("    Existing files are never overwritten. Missing files are created")
+    print("    from templates. Configure environment files after setup.")
+    print("=" * 60)
+
 def main():
     """Main setup function"""
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(
+        description='RiceGuard Automated Setup Script',
+        add_help=False  # We'll handle --help manually for better formatting
+    )
+    parser.add_argument('--help', '-h', action='store_true',
+                       help='Show help message and exit')
+
+    try:
+        args = parser.parse_args()
+        if args.help:
+            show_help()
+            return True
+    except SystemExit:
+        # argparse calls sys.exit on --help, but we want to handle it gracefully
+        show_help()
+        return True
+
     print_header("RiceGuard Automated Setup")
     print("=" * 60)
     print("This will set up your development environment safely.")

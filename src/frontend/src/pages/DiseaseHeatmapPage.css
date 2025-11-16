@@ -1,0 +1,372 @@
+/* src/pages/DiseaseHeatmapPage.css */
+.heatmap-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+/* Header */
+.heatmap-page-header {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 70px;
+}
+
+.logo-section {
+  display: flex;
+  align-items: center;
+}
+
+.heatmap-logo {
+  height: 45px;
+  width: auto;
+  object-fit: contain;
+}
+
+.nav-links {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.nav-links button {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #64748b;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.nav-links button:hover {
+  background: rgba(100, 116, 139, 0.1);
+  color: #334155;
+}
+
+.nav-links button.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+}
+
+/* Main Content */
+.heatmap-page-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 30px;
+  min-height: calc(100vh - 70px);
+}
+
+/* Active Filter Banner */
+.active-filter-banner {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px 25px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.filter-info h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.filter-info p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  opacity: 0.95;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.view-history-btn,
+.clear-filter-btn {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-history-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.view-history-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.clear-filter-btn {
+  background: rgba(255, 255, 255, 0.9);
+  color: #764ba2;
+}
+
+.clear-filter-btn:hover {
+  background: white;
+  transform: translateY(-1px);
+}
+
+/* Heatmap Container */
+.heatmap-container {
+  background: white;
+  border-radius: 12px;
+  padding: 0;
+  margin-bottom: 40px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+  overflow: hidden;
+}
+
+/* Instructions */
+.heatmap-instructions {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+}
+
+.heatmap-instructions h3 {
+  margin: 0 0 25px 0;
+  color: #1e293b;
+  font-size: 1.8rem;
+  text-align: center;
+  font-weight: 600;
+}
+
+.instructions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 25px;
+}
+
+.instruction-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  padding: 20px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.instruction-item:hover {
+  background: #f1f5f9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.instruction-icon {
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.instruction-item h4 {
+  margin: 0 0 6px 0;
+  color: #334155;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.instruction-item p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Desktop Responsive Design */
+@media (min-width: 1024px) {
+  .heatmap-page-content {
+    padding: 40px;
+  }
+
+  .instructions-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .active-filter-banner {
+    padding: 25px 35px;
+  }
+
+  .filter-info {
+    flex: 1;
+  }
+
+  .filter-actions {
+    flex-shrink: 0;
+  }
+}
+
+/* Large Desktop */
+@media (min-width: 1440px) {
+  .heatmap-page-content {
+    max-width: 1600px;
+    padding: 50px;
+  }
+
+  .instructions-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+  }
+
+  .instruction-item {
+    padding: 25px;
+  }
+}
+
+/* Extra Large Desktop */
+@media (min-width: 1920px) {
+  .heatmap-page-content {
+    max-width: 1800px;
+  }
+
+  .instructions-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 35px;
+  }
+}
+
+/* Animation for page load */
+.heatmap-page-content > * {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.heatmap-page-content > *:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.heatmap-page-content > *:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile/Small Screen - Hide entire page */
+@media (max-width: 1023px) {
+  .heatmap-page {
+    display: none;
+  }
+}
+
+/* Focus and Accessibility */
+.nav-links button:focus,
+.view-history-btn:focus,
+.clear-filter-btn:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Print Styles */
+@media print {
+  .heatmap-page-header,
+  .active-filter-banner,
+  .heatmap-instructions {
+    display: none !important;
+  }
+
+  .heatmap-page {
+    background: white !important;
+  }
+
+  .heatmap-page-content {
+    padding: 20px !important;
+  }
+
+  .heatmap-container {
+    box-shadow: none !important;
+    border: 1px solid #000 !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .heatmap-page {
+    background: white;
+  }
+
+  .heatmap-page-header {
+    background: white;
+    border-bottom: 2px solid #000;
+  }
+
+  .active-filter-banner {
+    background: #000;
+    color: #fff;
+    border: 2px solid #000;
+  }
+
+  .instruction-item {
+    border: 2px solid #000;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

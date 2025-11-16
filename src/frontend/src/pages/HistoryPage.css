@@ -1,0 +1,201 @@
+/* HistoryPage.css */
+
+.history-page {
+  position: relative;
+  min-height: 100vh;
+  font-family: 'Poppins', sans-serif;
+  color: #fff;
+  background:
+    linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+    url('../bg.jpg') no-repeat center center / cover;
+  overflow-x: hidden;
+}
+
+/* Header */
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: rgba(0, 0, 0, 0.4);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Place navigation to the left of the logo to match ScanPage */
+.history-header .nav-links {
+  order: 1;
+}
+
+.history-header .logo-section {
+  order: 2;
+}
+
+.history-logo {
+  height: 60px;
+  border-radius: 50%;
+}
+
+.nav-links button {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1rem;
+  margin-left: 1.2rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease-in-out;
+}
+
+.nav-links button:hover {
+  color: #c7ffc9;
+}
+
+.nav-links .active {
+  color: #00ff7f;
+}
+
+/* Content */
+.history-content {
+  width: 90%;
+  max-width: 1100px;
+  margin: 2rem auto;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Toolbar with title left and search on the right */
+.history-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.history-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.history-search {
+  width: 280px;
+  max-width: 45%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.9);
+  color: #1b5e20;
+}
+
+/* Restore caret visibility for the search input */
+.history-page .history-search {
+  caret-color: #1b5e20;
+}
+
+.select-all span {
+  margin-left: 0.35rem;
+}
+
+.history-controls button.danger {
+  background: #b71c1c;
+  color: #fff;
+  border: none;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease-in-out;
+}
+
+.history-controls button.danger:disabled {
+  background: rgba(183, 28, 28, 0.5);
+  cursor: not-allowed;
+}
+
+.history-controls button.danger:hover:not(:disabled) {
+  background: #d32f2f;
+}
+
+.history-card .card-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0.5rem 0.75rem 0 0.75rem;
+}
+
+.history-content h2 {
+  text-align: center;
+  color: #00e676;
+  margin-bottom: 1.5rem;
+}
+
+/* Grid layout for cards */
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+  /* Make history list scrollable within the content box */
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 0.25rem; /* avoid scrollbar overlap */
+}
+
+/* Card styling */
+.history-card {
+  background: rgba(255, 255, 255, 0.9);
+  color: #1b5e20;
+  border-radius: 15px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.history-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.history-image {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-bottom: 2px solid #1b5e20;
+}
+
+.history-info {
+  padding: 1rem;
+  text-align: left;
+}
+
+.history-info h3 {
+  margin: 0 0 0.5rem 0;
+  color: #1b5e20;
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+.history-info p {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+/* No History */
+.no-history {
+  text-align: center;
+  font-size: 1.2rem;
+  color: #ddd;
+  margin-top: 1rem;
+}
+
+/* Hide text caret to remove blinking cursor */
+.history-page, .history-page * {
+  caret-color: transparent;
+}
+
+/* Smaller modal width on History page */
+.history-page .modal {
+  width: min(400px, 90%);
+}
