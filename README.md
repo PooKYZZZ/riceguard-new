@@ -10,21 +10,15 @@ git clone <your-repo-url>
 cd riceguard
 
 # 2. Run setup (one-time)
-setup/setup.bat                    # Windows
-chmod +x setup/setup.sh && ./setup/setup.sh  # macOS/Linux
-python setup/setup.py              # Cross-platform Python
+python setup.py                    # Cross-platform automated setup
 
 # 3. Configure environment files
-cp setup/environment/backend.env.example backend/.env
-cp setup/environment/frontend.env.example frontend/.env
-
-# 4. Add MongoDB Atlas credentials
-# Edit backend/.env and replace:
+# Edit backend/.env and add your MongoDB Atlas credentials:
 # mongodb+srv://<username>:<password>@<cluster>.mongodb.net/riceguard_db
 # Get free cluster: https://www.mongodb.com/cloud/atlas
 
-# 5. Start development servers
-python start-dev.py                # Start both backend and frontend
+# 4. Start development servers
+python start.py                    # Start both backend and frontend
 ```
 
 ## Access Points
@@ -44,19 +38,17 @@ python start-dev.py                # Start both backend and frontend
 
 ```
 riceguard/
+├── setup.py          # One-command automated setup
+├── start.py          # Start all development services
 ├── README.md         # This file
 ├── .gitignore        # Git ignore rules
-├── setup/            # Complete setup system
-│   ├── setup.py      # Cross-platform setup
-│   ├── setup.bat     # Windows setup
-│   ├── setup.sh      # Unix/Linux setup
-│   └── environment/  # Environment templates
-├── scripts/          # Utility scripts
 ├── backend/          # FastAPI application
 ├── frontend/         # React application
 ├── mobileapp/        # React Native application
 ├── ml/               # ML model assets
-└── tools/            # Utility scripts
+├── docs/             # Documentation
+├── tools/            # Development utilities
+└── scripts/          # Build and deployment scripts
 ```
 
 ## ML Disease Classes
@@ -72,12 +64,12 @@ riceguard/
 
 For daily development, run:
 ```bash
-python start-dev.py
+python start.py
 ```
 
 For verification and testing:
 ```bash
-python verify-setup.py
+python tools/verify-setup.py
 ```
 
 ## Team 27

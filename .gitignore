@@ -11,15 +11,13 @@ Thumbs.db
 .env.*
 
 ###############################################################################
-# Documentation and AI assistant files (keep only README.md)
+# Documentation and AI assistant files (keep essential files)
 ###############################################################################
 *.md
 !README.md
-.claude/
-.claude
-docs/
-SETUP.md
-CLAUDE.md
+!CLAUDE.md
+!TDD_BDD_Test_Scenarios.md
+# Note: .claude/ and src/docs/ are now tracked for team collaboration
 
 ###############################################################################
 # Python / FastAPI backend
@@ -42,6 +40,13 @@ htmlcov/
 venv/
 ENV/
 env/
+src/backend/.venv
+src/frontend/node_modules
+src/mobileapp/node_modules
+src/mobileapp/.expo
+src/mobileapp/expo
+src/mobileapp/android/.gradle
+src/mobileapp/ios/Pods
 .mypy_cache/
 .ruff_cache/
 .python-version
@@ -82,4 +87,11 @@ ml/model.h5
 ml/**/*.ckpt
 ml/output/
 ml/tmp/
-backend/uploads/2025-*/
+backend/uploads/2025-*/# ML model files (too large for GitHub)
+src/ml/model.h5
+*.h5
+.claude/
+*.log
+# Claude Code configuration (contains secrets)
+.claude/mcp.json
+.claude/settings.local.json

@@ -1,0 +1,288 @@
+/*
+  Performance Optimized CSS
+  Optimized for smooth animations and transitions
+*/
+
+/* Enable hardware acceleration for better performance */
+.smooth-transition {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Optimized animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) translateZ(0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateZ(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px) translateZ(0);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) translateZ(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1) translateZ(0);
+  }
+  50% {
+    transform: scale(1.05) translateZ(0);
+  }
+}
+
+/* Optimized loading spinner */
+.loading-spinner-optimized {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  will-change: transform;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg) translateZ(0); }
+  100% { transform: rotate(360deg) translateZ(0); }
+}
+
+/* Optimized button transitions */
+.btn-optimized {
+  position: relative;
+  overflow: hidden;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, box-shadow;
+}
+
+.btn-optimized:hover {
+  transform: translateY(-2px) translateZ(0);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.btn-optimized:active {
+  transform: translateY(0) translateZ(0);
+}
+
+/* Optimized card hover effects */
+.card-optimized {
+  transform: translateZ(0);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, box-shadow;
+}
+
+.card-optimized:hover {
+  transform: translateY(-4px) translateZ(0);
+  box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+}
+
+/* Optimized modal animations */
+.modal-overlay-optimized {
+  opacity: 0;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity;
+}
+
+.modal-overlay-optimized.active {
+  opacity: 1;
+}
+
+.modal-content-optimized {
+  transform: scale(0.7) translateZ(0);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity;
+}
+
+.modal-content-optimized.active {
+  transform: scale(1) translateZ(0);
+  opacity: 1;
+}
+
+/* Optimized scroll performance */
+.smooth-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Contain paint for better performance */
+.contain-paint {
+  contain: paint;
+}
+
+/* Optimize image loading */
+.image-optimized {
+  content-visibility: auto;
+  contain-intrinsic-size: 200px 200px;
+  loading: lazy;
+}
+
+/* Optimized form inputs */
+.input-optimized {
+  transform: translateZ(0);
+  transition: border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: border-color, box-shadow;
+}
+
+.input-optimized:focus {
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* Optimized list rendering */
+.virtual-list {
+  contain: strict;
+  overflow-y: auto;
+  will-change: transform;
+}
+
+.virtual-list-item {
+  contain: layout style paint;
+}
+
+/* Responsive design with performance in mind */
+.responsive-container {
+  container-type: inline-size;
+}
+
+@container (max-width: 768px) {
+  .mobile-optimized {
+    font-size: 14px;
+    padding: 8px 12px;
+  }
+}
+
+/* Optimized dropdown animations */
+.dropdown-optimized {
+  transform: scaleY(0) translateZ(0);
+  transform-origin: top;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.dropdown-optimized.active {
+  transform: scaleY(1) translateZ(0);
+}
+
+/* Optimized tooltip */
+.tooltip-optimized {
+  opacity: 0;
+  transform: translateY(5px) translateZ(0);
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity, transform;
+  pointer-events: none;
+}
+
+.tooltip-optimized.visible {
+  opacity: 1;
+  transform: translateY(0) translateZ(0);
+}
+
+/* Performance optimizations for charts */
+.chart-container-optimized {
+  contain: layout style;
+  position: relative;
+}
+
+.chart-optimized {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Optimized search results */
+.search-results-optimized {
+  contain: layout style;
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+.search-result-item {
+  contain: layout style paint;
+  border-bottom: 1px solid #eee;
+  padding: 12px;
+  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.search-result-item:hover {
+  background-color: #f8f9fa;
+}
+
+/* Optimized progress bar */
+.progress-bar-optimized {
+  transform: scaleX(0) translateZ(0);
+  transform-origin: left;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.progress-bar-optimized.active {
+  transform: scaleX(1) translateZ(0);
+}
+
+/* Skeleton loading for better perceived performance */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Optimize for printing */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    font-size: 12pt;
+    line-height: 1.4;
+  }
+}
+
+/* Dark mode performance optimizations */
+@media (prefers-color-scheme: dark) {
+  .dark-optimized {
+    background-color: #1a1a1a;
+    color: #ffffff;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .retina-optimized {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
